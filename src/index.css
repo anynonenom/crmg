@@ -1,0 +1,123 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Pacifico&family=Great+Vibes&family=Cormorant+Garamond:ital,wght@0,700;1,400;1,700&family=Righteous&family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=Montserrat:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --breakpoint-xs: 480px;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Righteous", sans-serif;
+  --font-script: "Pacifico", cursive;
+  --font-elegant: "Great Vibes", cursive;
+  --font-serif: "Lora", serif;
+  --font-editorial: "Cormorant Garamond", serif;
+  --font-montserrat: "Montserrat", sans-serif;
+  --font-brand-head: var(--brand-font-head, "Pacifico", cursive);
+  --font-brand-body: var(--brand-font-body, "DM Sans", sans-serif);
+
+  --color-keppel: #2BBAA5;
+  --color-coral: #F96635;
+  --color-amber: #F9A822;
+  --color-cream: #FDF8EE;
+  --color-ink: #1A1208;
+  --color-mud: #3D2C1E;
+  --color-sand: #EEE0C0;
+  --color-celadon: #93D3AE;
+  --color-vanilla: #FAECB6;
+  --color-warm: #FFFDF7;
+
+  /* Eiden Brand Colors */
+  --color-eiden-deep: #122620;
+  --color-eiden-teal: #0c5752;
+  --color-eiden-gold: #d7bb93;
+  --color-eiden-cream: #f5f1e8;
+  /* Dynamic Brand Variables */
+  --color-brand-primary: var(--brand-primary, #2BBAA5);
+  --color-brand-secondary: var(--brand-secondary, #F96635);
+  --color-brand-bg: var(--brand-bg, #FDF8EE);
+  --font-brand-head: var(--brand-font-head, "Pacifico", cursive);
+  --font-brand-body: var(--brand-font-body, "DM Sans", sans-serif);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background-color: var(--color-brand-bg);
+    color: var(--color-ink);
+    font-family: var(--font-brand-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Prevent horizontal overflow on all screens */
+  html, body, #root {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  /* Smooth table scrolling on mobile */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-3 sm:px-4 py-1.5 rounded-md border border-gray-200 text-xs font-medium cursor-pointer transition-all duration-150 bg-white text-ink;
+    white-space: nowrap;
+  }
+  .btn:hover {
+    background-color: var(--color-brand-primary);
+    color: white;
+    border-color: var(--color-brand-primary);
+  }
+  .btn-brand {
+    background-color: var(--color-brand-primary);
+    color: white;
+    border-color: var(--color-brand-primary);
+  }
+  .btn-brand:hover {
+    opacity: 0.9;
+  }
+  .btn-coral {
+    background-color: var(--color-brand-secondary);
+    color: white;
+    border-color: var(--color-brand-secondary);
+  }
+  .btn-coral:hover {
+    opacity: 0.9;
+  }
+  .card {
+    @apply bg-white border border-gray-100 rounded-xl p-3 sm:p-4 shadow-sm;
+  }
+  .badge {
+    @apply inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider;
+  }
+  .badge-green { 
+    background-color: rgba(43, 186, 165, 0.15);
+    color: var(--color-brand-primary);
+  }
+  .badge-amber { @apply bg-amber/15 text-amber-700; }
+  .badge-red { 
+    background-color: rgba(249, 102, 53, 0.15);
+    color: var(--color-brand-secondary);
+  }
+  .badge-gray { @apply bg-gray-100 text-gray-500; }
+
+  /* Mobile-friendly table wrapper */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 0.75rem;
+  }
+  .table-wrap table {
+    min-width: 600px;
+  }
+
+  /* Modal backdrop */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4;
+  }
+  .modal-panel {
+    @apply bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto;
+  }
+}

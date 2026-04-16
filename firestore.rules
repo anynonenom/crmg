@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: organizations
+    // Fields:
+    //   - name, slug, email, password
+    //
+    // Collection: activities
+    // Fields:
+    //   - orgId, userId, userName, action, targetType, targetName, timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "abdelhakimakhidar@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    // For this demo, we allow reading organizations for login
+    function canReadOrgs() {
+      return true; // Allow public read for the login query
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /organizations/{orgId} {
+      allow read: if canReadOrgs();
+      allow write: if isAuthenticated(); 
+    }
+
+    match /guests/{guestId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /bookings/{bookingId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /tasks/{taskId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /leads/{leadId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /activities/{activityId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /reminders/{reminderId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /users/{userId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

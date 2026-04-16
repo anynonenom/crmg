@@ -1,0 +1,159 @@
+{
+  "entities": {
+    "Organization": {
+      "title": "Organization",
+      "description": "A client organization (tenant) using the CRM",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "password": { "type": "string" },
+        "branding": {
+          "type": "object",
+          "properties": {
+            "primaryColor": { "type": "string" },
+            "logoUrl": { "type": "string" }
+          }
+        }
+      },
+      "required": ["name", "slug"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "Log of user actions",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string" },
+        "targetType": { "type": "string" },
+        "targetName": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["orgId", "userId", "userName", "action", "targetType", "targetName", "timestamp"]
+    },
+    "Guest": {
+      "title": "Guest",
+      "description": "Guest profile information",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "type": { "type": "string", "enum": ["VIP", "Regular", "New"] },
+        "stays": { "type": "number" },
+        "lastVisit": { "type": "string" },
+        "spend": { "type": "number" },
+        "status": { "type": "string", "enum": ["In-house", "Arriving", "Past"] },
+        "initials": { "type": "string" }
+      },
+      "required": ["orgId", "name", "email", "type", "status"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Reservation details",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "ref": { "type": "string" },
+        "guestName": { "type": "string" },
+        "type": { "type": "string", "enum": ["Stay", "Dining", "Event"] },
+        "checkIn": { "type": "string" },
+        "checkOut": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Active", "Pending", "Confirmed", "Reserved", "Arriving"] }
+      },
+      "required": ["orgId", "ref", "guestName", "type", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Staff task assignment",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "name": { "type": "string" },
+        "department": { "type": "string", "enum": ["Housekeeping", "F&B", "Concierge", "Maintenance"] },
+        "due": { "type": "string" },
+        "assignee": { "type": "string" },
+        "done": { "type": "boolean" },
+        "urgent": { "type": "boolean" }
+      },
+      "required": ["orgId", "name", "department", "due", "assignee", "done"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Sales lead inquiry",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "name": { "type": "string" },
+        "source": { "type": "string" },
+        "status": { "type": "string", "enum": ["New", "Contacted", "Qualified", "Lost"] },
+        "stage": { "type": "string", "enum": ["D0", "D1", "D2", "D3", "D5", "D7", "D10", "D12", "Won", "Lost"] },
+        "value": { "type": "number" },
+        "date": { "type": "string" }
+      },
+      "required": ["orgId", "name", "source", "status", "value", "date"]
+    },
+    "User": {
+      "title": "User",
+      "description": "System user profile",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "role": { "type": "string", "enum": ["superadmin", "admin", "client"] },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" }
+      },
+      "required": ["role", "email"]
+    },
+    "Reminder": {
+      "title": "Reminder",
+      "description": "Log of sent reminders",
+      "type": "object",
+      "properties": {
+        "orgId": { "type": "string" },
+        "guestName": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "sentBy": { "type": "string" }
+      },
+      "required": ["orgId", "guestName", "timestamp", "sentBy"]
+    }
+  },
+  "firestore": {
+    "/organizations/{orgId}": {
+      "schema": "Organization",
+      "description": "Client organizations"
+    },
+    "/guests/{guestId}": {
+      "schema": "Guest",
+      "description": "Collection of guest profiles"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Collection of resort bookings"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Collection of staff tasks"
+    },
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Collection of sales leads"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "System users and their roles"
+    },
+    "/reminders/{reminderId}": {
+      "schema": "Reminder",
+      "description": "Log of sent reminders"
+    },
+    "/activities/{activityId}": {
+      "schema": "Activity",
+      "description": "Log of user actions"
+    }
+  }
+}
