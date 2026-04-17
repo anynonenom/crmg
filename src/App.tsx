@@ -201,6 +201,7 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginType, setLoginType] = useState<'superadmin' | 'admin' | 'client'>('superadmin');
+  const [loginPortal, setLoginPortal] = useState<'eiden' | 'lunja' | 'educazen' | null>(null);
 
   // Multi-tenancy states
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -1115,44 +1116,255 @@ export default function App() {
 
       <div className="flex flex-1 overflow-hidden">
         {!user ? (
-          <div className="flex-1 flex items-center justify-center bg-cream/50">
-            <div className="text-center max-w-md p-8">
-              <div className="w-20 h-20 bg-eiden-gold/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <UserCircle size={40} className="text-eiden-gold" />
+          /* ── Full-screen portal overlay (covers header) ── */
+          <div style={{position:'fixed',inset:0,zIndex:100,overflowY:'auto'}}>
+            {loginPortal === null ? (
+
+              /* ════════════════════════════════════════
+                 PORTAL SELECTOR — Dark Eiden canvas
+              ════════════════════════════════════════ */
+              <div style={{background:'#0A0F0C',minHeight:'100vh',fontFamily:'"Outfit",sans-serif',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 24px 60px',position:'relative',overflow:'hidden'}}>
+                {/* Blobs */}
+                <div style={{position:'fixed',width:'40vw',height:'40vw',top:'-15%',right:'-10%',background:'rgba(12,87,82,.22)',filter:'blur(100px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                <div style={{position:'fixed',width:'26vw',height:'26vw',bottom:'-10%',left:'-5%',background:'rgba(12,87,82,.10)',filter:'blur(80px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                {/* Watermark */}
+                <div style={{position:'fixed',bottom:'-30px',right:'20px',fontFamily:'"Outfit",sans-serif',fontWeight:800,fontSize:'clamp(120px,18vw,240px)',color:'rgba(207,194,146,.03)',pointerEvents:'none',lineHeight:1,userSelect:'none',letterSpacing:'-6px',zIndex:0}}>EIDEN</div>
+
+                {/* Header text */}
+                <div style={{position:'relative',zIndex:2,textAlign:'center',marginBottom:'52px'}}>
+                  <div style={{fontFamily:'"Cormorant Garamond",serif',fontWeight:600,fontSize:'11px',letterSpacing:'6px',textTransform:'uppercase',color:'rgba(207,194,146,.45)',marginBottom:'14px'}}>EIDEN GROUP · WORKSPACE</div>
+                  <h1 style={{fontFamily:'"Outfit",sans-serif',fontWeight:700,fontSize:'clamp(26px,4vw,40px)',color:'#FEFDFB',letterSpacing:'-1px',marginBottom:'10px'}}>Select Your Portal</h1>
+                  <p style={{fontFamily:'"Inter",sans-serif',fontSize:'14px',color:'rgba(254,253,251,.32)',lineHeight:1.6}}>Choose the workspace you'd like to access</p>
+                </div>
+
+                {/* Portal cards */}
+                <div style={{position:'relative',zIndex:2,display:'flex',flexWrap:'wrap',gap:'20px',justifyContent:'center',maxWidth:'920px',width:'100%'}}>
+
+                  {/* ── Eiden Group ── */}
+                  <button onClick={() => { setLoginPortal('eiden'); setLoginError(''); }} style={{background:'rgba(12,87,82,.10)',border:'1px solid rgba(12,87,82,.32)',borderRadius:'2px',padding:'36px 32px',width:'clamp(220px,28vw,272px)',cursor:'pointer',textAlign:'left',transition:'all .25s',position:'relative',overflow:'hidden',outline:'none'}}
+                    onMouseEnter={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(12,87,82,.20)';t.style.borderColor='rgba(12,87,82,.65)';t.style.transform='translateY(-4px)';}}
+                    onMouseLeave={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(12,87,82,.10)';t.style.borderColor='rgba(12,87,82,.32)';t.style.transform='translateY(0)';}}
+                  >
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'2px',background:'#0C5752'}} />
+                    <div style={{fontFamily:'"Outfit",sans-serif',fontWeight:700,fontSize:'22px',letterSpacing:'5px',textTransform:'uppercase',color:'#FEFDFB',marginBottom:'6px'}}>EIDEN</div>
+                    <div style={{fontFamily:'"Cormorant Garamond",serif',fontStyle:'italic',fontSize:'11px',letterSpacing:'2px',color:'rgba(207,194,146,.55)',textTransform:'uppercase',marginBottom:'22px'}}>Group · Super Admin</div>
+                    <div style={{fontFamily:'"Inter",sans-serif',fontSize:'13px',color:'rgba(254,253,251,.42)',lineHeight:1.65,marginBottom:'26px'}}>Full system access across all organizations, analytics and global controls.</div>
+                    <div style={{display:'flex',alignItems:'center',gap:'8px',fontFamily:'"Outfit",sans-serif',fontSize:'11px',letterSpacing:'3px',textTransform:'uppercase',color:'#0E7A73'}}>Access <span style={{fontSize:'16px',letterSpacing:0}}>→</span></div>
+                  </button>
+
+                  {/* ── Lunja Village ── */}
+                  <button onClick={() => { setLoginPortal('lunja'); setLoginError(''); }} style={{background:'rgba(43,186,165,.06)',border:'1px solid rgba(43,186,165,.18)',borderRadius:'24px',padding:'36px 32px',width:'clamp(220px,28vw,272px)',cursor:'pointer',textAlign:'left',transition:'all .25s',position:'relative',overflow:'hidden',outline:'none'}}
+                    onMouseEnter={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(43,186,165,.12)';t.style.borderColor='rgba(43,186,165,.50)';t.style.transform='translateY(-4px)';}}
+                    onMouseLeave={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(43,186,165,.06)';t.style.borderColor='rgba(43,186,165,.18)';t.style.transform='translateY(0)';}}
+                  >
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg,#2BBAA5,#F9A822,#F96635,#2BBAA5)'}} />
+                    <div style={{fontFamily:'"Great Vibes",cursive',fontSize:'40px',color:'#2BBAA5',marginBottom:'4px',lineHeight:1.15}}>Lunja Village</div>
+                    <div style={{fontFamily:'"DM Sans",sans-serif',fontWeight:500,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(254,253,251,.38)',marginBottom:'22px'}}>Resort · Management</div>
+                    <div style={{fontFamily:'"DM Sans",sans-serif',fontSize:'13px',color:'rgba(254,253,251,.42)',lineHeight:1.65,marginBottom:'26px'}}>Manage guest relations, bookings, leads and resort operations.</div>
+                    <div style={{display:'flex',alignItems:'center',gap:'8px',fontFamily:'"Righteous",sans-serif',fontSize:'11px',letterSpacing:'1px',color:'#2BBAA5'}}>Access <span style={{fontSize:'16px',letterSpacing:0}}>→</span></div>
+                  </button>
+
+                  {/* ── EducaZen Kids ── */}
+                  <button onClick={() => { setLoginPortal('educazen'); setLoginError(''); }} style={{background:'rgba(194,24,91,.06)',border:'1px solid rgba(194,24,91,.18)',borderRadius:'20px',padding:'36px 32px',width:'clamp(220px,28vw,272px)',cursor:'pointer',textAlign:'left',transition:'all .25s',position:'relative',overflow:'hidden',outline:'none'}}
+                    onMouseEnter={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(194,24,91,.12)';t.style.borderColor='rgba(194,24,91,.45)';t.style.transform='translateY(-4px)';}}
+                    onMouseLeave={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(194,24,91,.06)';t.style.borderColor='rgba(194,24,91,.18)';t.style.transform='translateY(0)';}}
+                  >
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg,#C2185B,#7B1FA2,#00897B,#F9A825)'}} />
+                    <img src="/educazen.png" alt="EducazenKids" style={{width:'72px',marginBottom:'10px',display:'block'}} onError={e=>(e.currentTarget.style.display='none')} />
+                    <div style={{fontFamily:'"Nunito",sans-serif',fontWeight:900,fontSize:'17px',color:'#FEFDFB',marginBottom:'4px'}}>EducazenKids</div>
+                    <div style={{fontFamily:'"Quicksand",sans-serif',fontWeight:500,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(254,253,251,.38)',marginBottom:'22px'}}>Centre Éducatif · Agadir</div>
+                    <div style={{fontFamily:'"Quicksand",sans-serif',fontSize:'13px',color:'rgba(254,253,251,.42)',lineHeight:1.65,marginBottom:'26px'}}>Suivi pédagogique, présences, paiements et gestion des élèves.</div>
+                    <div style={{display:'flex',alignItems:'center',gap:'8px',fontFamily:'"Nunito",sans-serif',fontWeight:700,fontSize:'11px',letterSpacing:'1px',color:'#C2185B'}}>Accéder <span style={{fontSize:'16px',letterSpacing:0}}>→</span></div>
+                  </button>
+                </div>
+
+                <div style={{position:'relative',zIndex:2,marginTop:'52px',fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',letterSpacing:'4px',textTransform:'uppercase',color:'rgba(207,194,146,.16)'}}>© 2026 EIDEN Group · All portals secured</div>
               </div>
-              <h2 className="text-3xl font-editorial italic text-ink mb-4">Welcome to Eiden CRM</h2>
-              <p className="text-gray-500 mb-8 leading-relaxed">A specialized workspace for managing resort operations, sales leads, and guest relationships.</p>
-              
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</label>
-                  <input 
-                    type="email"
-                    placeholder="admin@eiden-group.com"
-                    className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-coral/20 transition-all"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    required
-                  />
+
+            ) : loginPortal === 'eiden' ? (
+
+              /* ════════════════════════════════════════
+                 EIDEN LOGIN — Dark forest, sharp edges
+              ════════════════════════════════════════ */
+              <div style={{background:'#0A0F0C',minHeight:'100vh',fontFamily:'"Inter",sans-serif',display:'flex',flexDirection:'column',position:'relative',overflow:'hidden'}}>
+                {/* Marquee bar */}
+                <div style={{position:'fixed',top:0,left:0,right:0,background:'#0C5752',padding:'8px 0',overflow:'hidden',zIndex:10,flexShrink:0}}>
+                  <div style={{display:'flex',whiteSpace:'nowrap',animation:'marqueeScroll 22s linear infinite'}}>
+                    {['EIDEN Group','Workspace','v2.0','Secure Access','Private','EIDEN Group','Workspace','v2.0','Secure Access','Private'].map((txt,i)=>(
+                      <span key={i} style={{fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',letterSpacing:'4px',textTransform:'uppercase',color:'rgba(207,194,146,.65)',padding:'0 36px'}}>{txt}</span>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-1 text-left">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Password</label>
-                  <input 
-                    type="password"
-                    placeholder="Enter password"
-                    className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-coral/20 transition-all"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    required
-                  />
+                {/* Bottom bar */}
+                <div style={{position:'fixed',bottom:0,left:0,right:0,height:'3px',background:'#0C5752',zIndex:10}} />
+                {/* Blobs */}
+                <div style={{position:'fixed',width:'40vw',height:'40vw',top:'-15%',right:'-10%',background:'rgba(12,87,82,.28)',filter:'blur(100px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                <div style={{position:'fixed',width:'26vw',height:'26vw',bottom:'-10%',left:'-5%',background:'rgba(12,87,82,.14)',filter:'blur(80px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                {/* Watermark */}
+                <div style={{position:'fixed',bottom:'-30px',right:'30px',fontFamily:'"Outfit",sans-serif',fontWeight:800,fontSize:'clamp(160px,22vw,300px)',color:'rgba(207,194,146,.03)',pointerEvents:'none',lineHeight:1,userSelect:'none',letterSpacing:'-6px',zIndex:0}}>EIDEN</div>
+                {/* Back */}
+                <button onClick={()=>{setLoginPortal(null);setLoginError('');}} style={{position:'fixed',left:'24px',top:'44px',zIndex:20,fontFamily:'"Cormorant Garamond",serif',fontWeight:600,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(207,194,146,.4)',background:'none',border:'none',cursor:'pointer',transition:'color .2s',padding:0}}
+                  onMouseEnter={e=>(e.currentTarget.style.color='rgba(207,194,146,.85)')}
+                  onMouseLeave={e=>(e.currentTarget.style.color='rgba(207,194,146,.4)')}
+                >← All Portals</button>
+
+                <div style={{position:'relative',zIndex:2,flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'80px 24px 60px',minHeight:'100vh'}}>
+                  <div style={{background:'#FEFDFB',borderRadius:'2px',padding:'clamp(36px,5vw,56px) clamp(26px,5vw,52px)',width:'100%',maxWidth:'440px',boxShadow:'0 2px 4px rgba(0,0,0,.2),0 12px 40px rgba(0,0,0,.38),0 32px 80px rgba(0,0,0,.25)',position:'relative',overflow:'hidden'}}>
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'#0C5752'}} />
+                    <div style={{fontFamily:'"Outfit",sans-serif',fontWeight:700,fontSize:'28px',color:'#122620',letterSpacing:'6px',textTransform:'uppercase',marginBottom:'4px'}}>EIDEN</div>
+                    <div style={{fontFamily:'"Cormorant Garamond",serif',fontStyle:'italic',fontSize:'13px',color:'rgba(10,15,12,.38)',marginBottom:'36px'}}>Workspace · Private Access</div>
+                    <div style={{display:'flex',alignItems:'center',gap:'10px',fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'5px',textTransform:'uppercase',color:'#0C5752',marginBottom:'16px'}}>
+                      <span style={{display:'block',width:'22px',height:'1px',background:'#0C5752',flexShrink:0}} />Secure Access
+                    </div>
+                    <h2 style={{fontFamily:'"Outfit",sans-serif',fontWeight:600,fontSize:'clamp(20px,3.5vw,27px)',color:'#0A0F0C',marginBottom:'6px',letterSpacing:'-.5px'}}>Private <span style={{color:'#0E7A73'}}>Space</span></h2>
+                    <p style={{fontFamily:'"DM Serif Display",serif',fontStyle:'italic',fontSize:'14px',color:'rgba(10,15,12,.42)',marginBottom:'32px',lineHeight:'1.65'}}>Enter your credentials to access the EIDEN workspace.</p>
+                    <form onSubmit={handleLogin}>
+                      <div style={{marginBottom:'20px'}}>
+                        <label style={{display:'block',fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'4px',textTransform:'uppercase',color:'rgba(10,15,12,.38)',marginBottom:'8px'}}>Email</label>
+                        <input type="email" placeholder="admin@eiden-group.com" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} required
+                          style={{width:'100%',padding:'14px 18px',fontFamily:'"Inter",sans-serif',fontSize:'14px',color:'#0A0F0C',background:'#F4EBD0',border:'1px solid rgba(12,87,82,.15)',borderRadius:'2px',outline:'none',transition:'all .25s'}}
+                          onFocus={e=>{e.currentTarget.style.borderColor='#0C5752';e.currentTarget.style.background='#F8F3E8';e.currentTarget.style.boxShadow='0 0 0 3px rgba(12,87,82,.1)';}}
+                          onBlur={e=>{e.currentTarget.style.borderColor='rgba(12,87,82,.15)';e.currentTarget.style.background='#F4EBD0';e.currentTarget.style.boxShadow='none';}}
+                        />
+                      </div>
+                      <div style={{marginBottom:'24px'}}>
+                        <label style={{display:'block',fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'4px',textTransform:'uppercase',color:'rgba(10,15,12,.38)',marginBottom:'8px'}}>Password</label>
+                        <input type="password" placeholder="Enter your password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} required
+                          style={{width:'100%',padding:'14px 18px',fontFamily:'"Inter",sans-serif',fontSize:'14px',letterSpacing:'3px',color:'#0A0F0C',background:'#F4EBD0',border:'1px solid rgba(12,87,82,.15)',borderRadius:'2px',outline:'none',transition:'all .25s'}}
+                          onFocus={e=>{e.currentTarget.style.borderColor='#0C5752';e.currentTarget.style.background='#F8F3E8';e.currentTarget.style.boxShadow='0 0 0 3px rgba(12,87,82,.1)';}}
+                          onBlur={e=>{e.currentTarget.style.borderColor='rgba(12,87,82,.15)';e.currentTarget.style.background='#F4EBD0';e.currentTarget.style.boxShadow='none';}}
+                        />
+                      </div>
+                      {loginError && <p style={{fontFamily:'"Cormorant Garamond",serif',fontSize:'11px',fontWeight:600,letterSpacing:'1.5px',color:'#EF4444',marginBottom:'12px'}}>{loginError}</p>}
+                      <button type="submit" style={{width:'100%',padding:'15px 24px',fontFamily:'"Outfit",sans-serif',fontWeight:600,fontSize:'14px',letterSpacing:'3px',textTransform:'uppercase',color:'#FEFDFB',background:'#122620',border:'none',borderRadius:'2px',cursor:'pointer',transition:'all .25s',boxShadow:'0 4px 18px rgba(0,0,0,.22)',marginTop:'8px'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='#0C5752';e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 26px rgba(12,87,82,.32)';}}
+                        onMouseLeave={e=>{e.currentTarget.style.background='#122620';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 18px rgba(0,0,0,.22)';}}
+                      >Access →</button>
+                    </form>
+                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(12,87,82,.1)',textAlign:'center',fontFamily:'"Cormorant Garamond",serif',fontSize:'10.5px',fontWeight:600,letterSpacing:'4px',textTransform:'uppercase',color:'rgba(10,15,12,.16)'}}>© 2026 EIDEN Group</div>
+                  </div>
                 </div>
-                {loginError && <p className="text-xs text-coral font-medium">{loginError}</p>}
-                <button type="submit" className="w-full btn btn-coral py-4 text-lg shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-3">
-                  <UserCircle size={20} />
-                  Sign In
-                </button>
-              </form>
-            </div>
+              </div>
+
+            ) : loginPortal === 'lunja' ? (
+
+              /* ════════════════════════════════════════
+                 LUNJA LOGIN — Warm cream, rounded
+              ════════════════════════════════════════ */
+              <div style={{background:'#FDF8EE',minHeight:'100vh',fontFamily:'"DM Sans",sans-serif',display:'flex',flexDirection:'column',position:'relative',overflow:'hidden'}}>
+                {/* Bottom bar */}
+                <div style={{position:'fixed',bottom:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg,#2BBAA5,#F9A822,#F96635,#2BBAA5)',zIndex:10}} />
+                {/* Blobs */}
+                <div style={{position:'fixed',width:'45vw',height:'45vw',top:'-15%',right:'-10%',background:'rgba(43,186,165,.1)',filter:'blur(90px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                <div style={{position:'fixed',width:'32vw',height:'32vw',bottom:'-10%',left:'-6%',background:'rgba(249,168,34,.09)',filter:'blur(80px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                <div style={{position:'fixed',width:'20vw',height:'20vw',top:'40%',left:'5%',background:'rgba(249,102,53,.06)',filter:'blur(70px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                {/* Watermark */}
+                <div style={{position:'fixed',bottom:'-40px',right:'-10px',fontFamily:'"Great Vibes",cursive',fontSize:'clamp(180px,24vw,320px)',color:'#2BBAA5',opacity:.04,pointerEvents:'none',lineHeight:1,userSelect:'none',zIndex:0}}>Lunja</div>
+                {/* Back */}
+                <button onClick={()=>{setLoginPortal(null);setLoginError('');}} style={{position:'fixed',left:'24px',top:'24px',zIndex:20,fontFamily:'"DM Sans",sans-serif',fontWeight:600,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.32)',background:'none',border:'none',cursor:'pointer',transition:'color .2s',padding:0}}
+                  onMouseEnter={e=>(e.currentTarget.style.color='#2BBAA5')}
+                  onMouseLeave={e=>(e.currentTarget.style.color='rgba(26,18,8,.32)')}
+                >← All Portals</button>
+
+                <div style={{position:'relative',zIndex:2,flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 24px 60px',minHeight:'100vh'}}>
+                  <div style={{background:'#FFFDF7',borderRadius:'24px',padding:'clamp(36px,5vw,56px) clamp(26px,5vw,52px)',width:'100%',maxWidth:'440px',boxShadow:'0 2px 4px rgba(43,186,165,.04),0 8px 28px rgba(43,186,165,.09),0 24px 56px rgba(26,18,8,.06)',position:'relative',overflow:'hidden'}}>
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg,#2BBAA5,#F9A822,#F96635,#2BBAA5)'}} />
+                    <div style={{fontFamily:'"Great Vibes",cursive',fontSize:'48px',color:'#2BBAA5',lineHeight:1.05,marginBottom:'4px'}}>Lunja Village</div>
+                    <div style={{fontFamily:'"DM Sans",sans-serif',fontSize:'11px',fontWeight:500,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.35)',marginBottom:'36px'}}>Resort · Management</div>
+                    <div style={{display:'flex',alignItems:'center',gap:'10px',fontFamily:'"Righteous",sans-serif',fontSize:'10px',letterSpacing:'4px',textTransform:'uppercase',color:'#2BBAA5',marginBottom:'16px'}}>
+                      <span style={{display:'block',width:'22px',height:'1.5px',background:'#2BBAA5',flexShrink:0}} />Secure Access
+                    </div>
+                    <h2 style={{fontFamily:'"Righteous",sans-serif',fontSize:'clamp(20px,3.5vw,27px)',color:'#1A1208',marginBottom:'6px'}}>Private <span style={{color:'#2BBAA5'}}>Space</span></h2>
+                    <p style={{fontFamily:'"Lora",serif',fontStyle:'italic',fontSize:'13.5px',color:'rgba(26,18,8,.42)',marginBottom:'32px',lineHeight:'1.65'}}>Enter your credentials to access the Lunja Village workspace.</p>
+                    <form onSubmit={handleLogin}>
+                      <div style={{marginBottom:'20px'}}>
+                        <label style={{display:'block',fontFamily:'"DM Sans",sans-serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.38)',marginBottom:'8px'}}>Email</label>
+                        <input type="email" placeholder="admin@lunja.com" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} required
+                          style={{width:'100%',padding:'14px 18px',fontFamily:'"DM Sans",sans-serif',fontSize:'14px',color:'#1A1208',background:'#FDF8EE',border:'1.5px solid rgba(43,186,165,.15)',borderRadius:'14px',outline:'none',transition:'all .25s'}}
+                          onFocus={e=>{e.currentTarget.style.borderColor='#2BBAA5';e.currentTarget.style.background='#FFFFFF';e.currentTarget.style.boxShadow='0 0 0 4px rgba(43,186,165,.1)';}}
+                          onBlur={e=>{e.currentTarget.style.borderColor='rgba(43,186,165,.15)';e.currentTarget.style.background='#FDF8EE';e.currentTarget.style.boxShadow='none';}}
+                        />
+                      </div>
+                      <div style={{marginBottom:'24px'}}>
+                        <label style={{display:'block',fontFamily:'"DM Sans",sans-serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.38)',marginBottom:'8px'}}>Password</label>
+                        <input type="password" placeholder="Enter your password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} required
+                          style={{width:'100%',padding:'14px 18px',fontFamily:'"DM Sans",sans-serif',fontSize:'14px',letterSpacing:'3px',color:'#1A1208',background:'#FDF8EE',border:'1.5px solid rgba(43,186,165,.15)',borderRadius:'14px',outline:'none',transition:'all .25s'}}
+                          onFocus={e=>{e.currentTarget.style.borderColor='#2BBAA5';e.currentTarget.style.background='#FFFFFF';e.currentTarget.style.boxShadow='0 0 0 4px rgba(43,186,165,.1)';}}
+                          onBlur={e=>{e.currentTarget.style.borderColor='rgba(43,186,165,.15)';e.currentTarget.style.background='#FDF8EE';e.currentTarget.style.boxShadow='none';}}
+                        />
+                      </div>
+                      {loginError && <p style={{fontFamily:'"DM Sans",sans-serif',fontSize:'11px',fontWeight:600,letterSpacing:'1.5px',color:'#F96635',marginBottom:'12px'}}>{loginError}</p>}
+                      <button type="submit" style={{width:'100%',padding:'15px 24px',fontFamily:'"Righteous",sans-serif',fontSize:'15px',letterSpacing:'1px',color:'#FFFFFF',background:'#2BBAA5',border:'none',borderRadius:'14px',cursor:'pointer',transition:'all .25s',boxShadow:'0 4px 18px rgba(43,186,165,.3)',marginTop:'8px'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='#1A8F7C';e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 26px rgba(43,186,165,.38)';}}
+                        onMouseLeave={e=>{e.currentTarget.style.background='#2BBAA5';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 18px rgba(43,186,165,.3)';}}
+                      >Access →</button>
+                    </form>
+                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(43,186,165,.1)',textAlign:'center',fontFamily:'"DM Sans",sans-serif',fontSize:'10.5px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.18)'}}>© 2026 Lunja Village</div>
+                  </div>
+                </div>
+              </div>
+
+            ) : (
+
+              /* ════════════════════════════════════════
+                 EDUCAZEN LOGIN — White, magenta, playful
+              ════════════════════════════════════════ */
+              <div style={{background:'#FFFFFF',minHeight:'100vh',fontFamily:'"Quicksand",sans-serif',display:'flex',flexDirection:'column',position:'relative',overflow:'hidden'}}>
+                {/* Bottom bar */}
+                <div style={{position:'fixed',bottom:0,left:0,right:0,height:'4px',background:'linear-gradient(90deg,#C2185B,#7B1FA2,#00897B,#F9A825)',zIndex:10}} />
+                {/* Blobs */}
+                <div style={{position:'fixed',width:'40vw',height:'40vw',top:'-12%',right:'-8%',background:'#FFF0F5',opacity:.7,filter:'blur(70px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                <div style={{position:'fixed',width:'28vw',height:'28vw',bottom:'-8%',left:'-5%',background:'#F6F0FF',opacity:.6,filter:'blur(70px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                <div style={{position:'fixed',width:'18vw',height:'18vw',top:'30%',left:'7%',background:'#E8F8F5',opacity:.5,filter:'blur(70px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
+                {/* Watermark */}
+                <div style={{position:'fixed',bottom:'-60px',right:'-60px',fontSize:'clamp(200px,28vw,360px)',opacity:.025,pointerEvents:'none',zIndex:0,lineHeight:1,color:'#C2185B',fontFamily:'"Nunito",sans-serif',fontWeight:900,userSelect:'none'}}>🧩</div>
+                {/* Back */}
+                <button onClick={()=>{setLoginPortal(null);setLoginError('');}} style={{position:'fixed',left:'24px',top:'24px',zIndex:20,fontFamily:'"Quicksand",sans-serif',fontWeight:600,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(45,45,58,.32)',background:'none',border:'none',cursor:'pointer',transition:'color .2s',padding:0}}
+                  onMouseEnter={e=>(e.currentTarget.style.color='#C2185B')}
+                  onMouseLeave={e=>(e.currentTarget.style.color='rgba(45,45,58,.32)')}
+                >← Tous les portails</button>
+
+                <div style={{position:'relative',zIndex:2,flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 24px 60px',minHeight:'100vh'}}>
+                  <div style={{background:'#FFFFFF',borderRadius:'20px',padding:'clamp(36px,5vw,56px) clamp(26px,5vw,52px)',width:'100%',maxWidth:'440px',boxShadow:'0 2px 4px rgba(194,24,91,.04),0 8px 28px rgba(194,24,91,.08),0 24px 56px rgba(45,45,58,.06)',position:'relative',overflow:'hidden'}}>
+                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg,#C2185B,#7B1FA2,#00897B,#F9A825)'}} />
+                    {/* Logo */}
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',marginBottom:'32px'}}>
+                      <img src="/educazen.png" alt="EducazenKids" style={{width:'clamp(90px,16vw,130px)',marginBottom:'12px',display:'block'}} onError={e=>(e.currentTarget.style.display='none')} />
+                      <p style={{fontFamily:'"Playfair Display",serif',fontStyle:'italic',fontSize:'13px',color:'rgba(45,45,58,.5)',textAlign:'center',lineHeight:'1.6'}}>Centre Éducatif & Psychosocial · Agadir</p>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:'10px',fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'4px',textTransform:'uppercase',color:'#C2185B',marginBottom:'20px'}}>
+                      <span style={{display:'block',width:'22px',height:'1.5px',background:'#C2185B',flexShrink:0}} />Accès Sécurisé
+                    </div>
+                    <h2 style={{fontFamily:'"Nunito",sans-serif',fontWeight:800,fontSize:'clamp(20px,3.5vw,27px)',lineHeight:'1.1',color:'#2D2D3A',marginBottom:'6px'}}>Espace <span style={{color:'#C2185B'}}>Privé</span></h2>
+                    <p style={{fontFamily:'"Playfair Display",serif',fontStyle:'italic',fontSize:'14px',color:'rgba(45,45,58,.5)',marginBottom:'32px',lineHeight:'1.65'}}>Veuillez entrer vos identifiants pour accéder à l'espace.</p>
+                    <form onSubmit={handleLogin}>
+                      <div style={{marginBottom:'20px'}}>
+                        <label style={{display:'block',fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(45,45,58,.5)',marginBottom:'8px'}}>Email</label>
+                        <input type="email" placeholder="admin@educazenkids.com" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} required
+                          style={{width:'100%',padding:'14px 18px',fontFamily:'"Quicksand",sans-serif',fontSize:'14px',color:'#2D2D3A',background:'#FFFDF9',border:'1.5px solid rgba(194,24,91,.12)',borderRadius:'12px',outline:'none',transition:'all .25s'}}
+                          onFocus={e=>{e.currentTarget.style.borderColor='#C2185B';e.currentTarget.style.background='#FFFFFF';e.currentTarget.style.boxShadow='0 0 0 4px rgba(194,24,91,.08)';}}
+                          onBlur={e=>{e.currentTarget.style.borderColor='rgba(194,24,91,.12)';e.currentTarget.style.background='#FFFDF9';e.currentTarget.style.boxShadow='none';}}
+                        />
+                      </div>
+                      <div style={{marginBottom:'24px'}}>
+                        <label style={{display:'block',fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(45,45,58,.5)',marginBottom:'8px'}}>Mot de passe</label>
+                        <input type="password" placeholder="Entrez votre mot de passe" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} required
+                          style={{width:'100%',padding:'14px 18px',fontFamily:'"Quicksand",sans-serif',fontSize:'14px',letterSpacing:'3px',color:'#2D2D3A',background:'#FFFDF9',border:'1.5px solid rgba(194,24,91,.12)',borderRadius:'12px',outline:'none',transition:'all .25s'}}
+                          onFocus={e=>{e.currentTarget.style.borderColor='#C2185B';e.currentTarget.style.background='#FFFFFF';e.currentTarget.style.boxShadow='0 0 0 4px rgba(194,24,91,.08)';}}
+                          onBlur={e=>{e.currentTarget.style.borderColor='rgba(194,24,91,.12)';e.currentTarget.style.background='#FFFDF9';e.currentTarget.style.boxShadow='none';}}
+                        />
+                      </div>
+                      {loginError && <p style={{fontFamily:'"Cormorant Garamond",serif',fontSize:'11px',fontWeight:600,letterSpacing:'1.5px',color:'#e53935',marginBottom:'12px'}}>{loginError}</p>}
+                      <button type="submit" style={{width:'100%',padding:'15px 24px',fontFamily:'"Nunito",sans-serif',fontWeight:800,fontSize:'15px',letterSpacing:'.5px',color:'#FFFFFF',background:'#C2185B',border:'none',borderRadius:'12px',cursor:'pointer',transition:'all .25s',boxShadow:'0 4px 18px rgba(194,24,91,.28)',marginTop:'8px'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='#E91E7B';e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 26px rgba(194,24,91,.34)';}}
+                        onMouseLeave={e=>{e.currentTarget.style.background='#C2185B';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 18px rgba(194,24,91,.28)';}}
+                      >Accéder →</button>
+                    </form>
+                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(194,24,91,.07)',textAlign:'center',fontFamily:'"Cormorant Garamond",serif',fontSize:'10.5px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(45,45,58,.2)'}}>© 2026 EducazenKids</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <>
