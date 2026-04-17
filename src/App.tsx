@@ -42,6 +42,7 @@ import {
 } from 'recharts';
 import { supabase } from './lib/supabase';
 import { ClientBoard } from './components/ClientBoard';
+import { EducazenDashboard } from './components/EducazenDashboard';
 import { cn } from './lib/utils';
 
 // --- Types ---
@@ -302,9 +303,16 @@ export default function App() {
   // Branding Effect
   React.useEffect(() => {
     const root = document.documentElement;
-    const isLunja = (role === 'client' || role === 'admin') && !!user;
-    
-    if (isLunja) {
+    const isEducazen = !!user && userOrgId === 'educazen';
+    const isLunja = (role === 'client' || role === 'admin') && !!user && !isEducazen;
+
+    if (isEducazen) {
+      root.style.setProperty('--brand-primary', '#C2185B'); // EducaZen Magenta
+      root.style.setProperty('--brand-secondary', '#7B1FA2'); // EducaZen Violet
+      root.style.setProperty('--brand-bg', '#FFF0F5'); // Rose pastel
+      root.style.setProperty('--brand-font-head', '"Nunito", sans-serif');
+      root.style.setProperty('--brand-font-body', '"Quicksand", sans-serif');
+    } else if (isLunja) {
       root.style.setProperty('--brand-primary', '#2BBAA5'); // Keppel
       root.style.setProperty('--brand-secondary', '#F96635'); // Coral
       root.style.setProperty('--brand-bg', '#FDF8EE'); // Cream
@@ -437,6 +445,25 @@ export default function App() {
       return;
     }
 
+    // 2b. EducaZen Parent Portal
+    if (loginEmail === 'parent@educazen.com' && loginPassword === 'parent123') {
+      const userData = {
+        uid: 'educazen-parent',
+        email: loginEmail,
+        displayName: 'Parent EducaZen',
+        role: 'client',
+        orgId: 'educazen'
+      };
+      setUser(userData);
+      setUserRole('client');
+      setRole('client');
+      setUserOrgId('educazen');
+      setCurrentOrgId('educazen');
+      setPage('dashboard');
+      localStorage.setItem('eiden_user', JSON.stringify(userData));
+      return;
+    }
+
     // 3. Check Organizations (Dynamic Admins)
     try {
       const { data, error } = await supabase.from('organizations').select('*').eq('email', loginEmail).limit(1);
@@ -501,7 +528,8 @@ export default function App() {
     
     const orgs = [
       { id: 'lunja', name: 'Lunja Village', slug: 'lunja', email: 'lunja@eiden-group.com', password: 'password123' },
-      { id: 'eiden', name: 'Eiden Group', slug: 'eiden', email: 'eiden@eiden-group.com', password: 'password123' }
+      { id: 'eiden', name: 'Eiden Group', slug: 'eiden', email: 'eiden@eiden-group.com', password: 'password123' },
+      { id: 'educazen', name: 'EducazenKids', slug: 'educazen', email: 'admin@educazenkids.com', password: 'educazen123' }
     ];
 
     for (const org of orgs) {
@@ -931,9 +959,13 @@ export default function App() {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-          <div className="text-2xl font-brand-head text-brand-secondary">
-            {role === 'superadmin' ? 'Eiden Solutions' : (organizations.find(o => o.id === userOrgId)?.name || 'Lunja Village')}
-          </div>
+          {userOrgId === 'educazen' ? (
+            <img src="/educazen.png" alt="EducazenKids" className="h-9 w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          ) : (
+            <div className="text-2xl font-brand-head text-brand-secondary">
+              {role === 'superadmin' ? 'Eiden Solutions' : (organizations.find(o => o.id === userOrgId)?.name || 'Lunja Village')}
+            </div>
+          )}
           <div className="h-4 w-[1px] bg-brand-secondary/30 mx-2" />
           <div className="hidden sm:block text-[10px] font-brand-body uppercase tracking-[0.2em] text-brand-secondary/60">
             {role === 'superadmin' ? 'SuperAdmin Portal' : role === 'admin' ? 'Manager Portal' : 'Guest Portal'}
@@ -1065,25 +1097,35 @@ export default function App() {
                   <SidebarItem icon={Users} label="Global Users" active={page === 'users'} onClick={() => setPage('users')} />
                 </>
               ) : role === 'admin' ? (
-                <>
-                  <SidebarItem icon={LayoutDashboard} label="Dashboard" active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
-                  <SidebarItem icon={ArrowUpRight} label="Client Board" active={page === 'client-board'} onClick={() => setPage('client-board')} />
-                  <SidebarItem icon={Users} label="Contacts" active={page === 'guests'} onClick={() => setPage('guests')} />
-                  <SidebarItem icon={CalendarDays} label="Bookings" active={page === 'bookings'} onClick={() => setPage('bookings')} />
-                  <SidebarItem icon={CheckSquare} label="Tasks" active={page === 'tasks'} onClick={() => setPage('tasks')} />
-                  <SidebarItem icon={CalendarDays} label="Calendar" active={page === 'calendar'} onClick={() => setPage('calendar')} />
-                  <SidebarItem icon={BarChart3} label="Revenue" active={page === 'revenue'} onClick={() => setPage('revenue')} />
-                </>
+                userOrgId === 'educazen' ? (
+                  // EducaZen admin sidebar — single entry point
+                  <SidebarItem icon={LayoutDashboard} label="Tableau de Bord" active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
+                ) : (
+                  <>
+                    <SidebarItem icon={LayoutDashboard} label="Dashboard" active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
+                    <SidebarItem icon={ArrowUpRight} label="Client Board" active={page === 'client-board'} onClick={() => setPage('client-board')} />
+                    <SidebarItem icon={Users} label="Contacts" active={page === 'guests'} onClick={() => setPage('guests')} />
+                    <SidebarItem icon={CalendarDays} label="Bookings" active={page === 'bookings'} onClick={() => setPage('bookings')} />
+                    <SidebarItem icon={CheckSquare} label="Tasks" active={page === 'tasks'} onClick={() => setPage('tasks')} />
+                    <SidebarItem icon={CalendarDays} label="Calendar" active={page === 'calendar'} onClick={() => setPage('calendar')} />
+                    <SidebarItem icon={BarChart3} label="Revenue" active={page === 'revenue'} onClick={() => setPage('revenue')} />
+                  </>
+                )
               ) : (
-                <>
-                  <SidebarItem icon={LayoutDashboard} label="Overview" active={page === 'client-overview'} onClick={() => setPage('client-overview')} />
-                  <SidebarItem icon={CalendarDays} label="My Booking" active={page === 'client-booking'} onClick={() => setPage('client-booking')} />
-                  <div className="opacity-50 pointer-events-none relative group mt-2" title="Coming Soon">
-                    <SidebarItem icon={Utensils} label="Guest Portal" active={page === 'client-dining'} onClick={() => {}} />
-                    <span className="absolute top-1/2 -translate-y-1/2 right-4 text-[8px] bg-gray-200 text-gray-500 px-2 rounded-full uppercase tracking-widest font-bold">Soon</span>
-                  </div>
-                  <SidebarItem icon={Palmtree} label="Activities" active={page === 'client-activities'} onClick={() => setPage('client-activities')} />
-                </>
+                userOrgId === 'educazen' ? (
+                  // EducaZen parent sidebar
+                  <SidebarItem icon={LayoutDashboard} label="Espace Parent" active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
+                ) : (
+                  <>
+                    <SidebarItem icon={LayoutDashboard} label="Overview" active={page === 'client-overview'} onClick={() => setPage('client-overview')} />
+                    <SidebarItem icon={CalendarDays} label="My Booking" active={page === 'client-booking'} onClick={() => setPage('client-booking')} />
+                    <div className="opacity-50 pointer-events-none relative group mt-2" title="Coming Soon">
+                      <SidebarItem icon={Utensils} label="Guest Portal" active={page === 'client-dining'} onClick={() => {}} />
+                      <span className="absolute top-1/2 -translate-y-1/2 right-4 text-[8px] bg-gray-200 text-gray-500 px-2 rounded-full uppercase tracking-widest font-bold">Soon</span>
+                    </div>
+                    <SidebarItem icon={Palmtree} label="Activities" active={page === 'client-activities'} onClick={() => setPage('client-activities')} />
+                  </>
+                )
               )}
             </nav>
           </div>
@@ -1104,7 +1146,13 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {role === 'admin' || role === 'superadmin' ? (
+              {/* ─── EducaZen Dashboard (admin + parent) ─── */}
+              {userOrgId === 'educazen' ? (
+                <EducazenDashboard
+                  role={role === 'client' ? 'parent' : 'admin'}
+                  userEmail={user?.email}
+                />
+              ) : role === 'admin' || role === 'superadmin' ? (
                 <>
                   {page === 'dashboard' && (
                     <div className="space-y-8">
