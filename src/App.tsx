@@ -201,7 +201,12 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginType, setLoginType] = useState<'superadmin' | 'admin' | 'client'>('superadmin');
-  const [loginPortal, setLoginPortal] = useState<'eiden' | 'lunja' | 'educazen' | null>(null);
+  const [loginPortal, setLoginPortal] = useState<'eiden' | 'lunja' | 'educazen' | null>(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/lunja-village')) return 'lunja';
+    if (path.startsWith('/educazenkids')) return 'educazen';
+    return 'eiden'; // root → Eiden Group login
+  });
 
   // Multi-tenancy states
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -290,15 +295,8 @@ export default function App() {
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [isSavingOrg, setIsSavingOrg] = useState(false);
 
-  // Auth Listener + hash-based portal routing
+  // Auth Listener — restore session from localStorage
   React.useEffect(() => {
-    // Read URL hash to pre-select a portal (e.g. /#lunja → Lunja login)
-    const hash = window.location.hash.replace('#', '').toLowerCase();
-    if (hash === 'eiden' || hash === 'lunja' || hash === 'educazen') {
-      setLoginPortal(hash as 'eiden' | 'lunja' | 'educazen');
-    }
-
-    // Check local storage for existing session
     const savedUser = localStorage.getItem('eiden_user');
     if (savedUser) {
       const userData = JSON.parse(savedUser);
@@ -338,13 +336,6 @@ export default function App() {
       root.style.setProperty('--brand-font-body', '"Inter", sans-serif');
     }
   }, [role, userOrgId, user]);
-
-  // Sync URL hash with active portal (so links stay shareable)
-  React.useEffect(() => {
-    if (!user) {
-      window.location.hash = loginPortal ? loginPortal : '';
-    }
-  }, [loginPortal, user]);
 
   // ── Notifications ──
   const fetchNotifications = React.useCallback(async () => {
@@ -474,111 +465,59 @@ export default function App() {
     e.preventDefault();
     setLoginError('');
 
-    // 1. Check Super Admin (Fixed)
-    if (loginEmail === 'admin@eiden-group.com' && loginPassword === 'superadmin123') {
-      const userData = {
-        uid: 'superadmin',
-        email: loginEmail,
-        displayName: 'Super Admin',
-        role: 'superadmin',
-        orgId: null
-      };
+    const doLogin = (userData: any, targetPage: Page) => {
       setUser(userData);
-      setUserRole('superadmin');
-      setRole('superadmin');
-      setUserOrgId(null);
-      setCurrentOrgId(null);
-      setPage('dashboard');
+      setUserRole(userData.role);
+      setRole(userData.role);
+      setUserOrgId(userData.orgId);
+      setCurrentOrgId(userData.orgId);
+      setPage(targetPage);
       localStorage.setItem('eiden_user', JSON.stringify(userData));
+    };
+
+    // ── EIDEN portal (root /) — SUPERADMIN ONLY ──────────────────────
+    if (loginPortal === 'eiden') {
+      if (loginEmail === 'admin@eiden-group.com' && loginPassword === 'superadmin123') {
+        doLogin({ uid: 'superadmin', email: loginEmail, displayName: 'Super Admin', role: 'superadmin', orgId: null }, 'dashboard');
+      } else {
+        // Security: any non-superadmin credentials are rejected with a clear message
+        setLoginError('No Access — this portal is restricted to EIDEN Group administrators only.');
+      }
       return;
     }
 
-    // 2. Check Client (Fixed for now)
-    if (loginEmail === 'client@eiden-group.com' && loginPassword === 'client123') {
-      const userData = {
-        uid: 'client',
-        email: loginEmail,
-        displayName: 'Lunja Client',
-        role: 'client',
-        orgId: 'lunja'
-      };
-      setUser(userData);
-      setUserRole('client');
-      setRole('client');
-      setUserOrgId('lunja');
-      setCurrentOrgId('lunja');
-      setPage('client-overview');
-      localStorage.setItem('eiden_user', JSON.stringify(userData));
-      return;
-    }
-
-    // 2b. EducaZen Admin
-    if (loginEmail === 'admin@educazenkids.com' && loginPassword === 'educazen123') {
-      const userData = {
-        uid: 'educazen-admin',
-        email: loginEmail,
-        displayName: 'EducaZen Admin',
-        role: 'admin',
-        orgId: 'educazen'
-      };
-      setUser(userData);
-      setUserRole('admin');
-      setRole('admin');
-      setUserOrgId('educazen');
-      setCurrentOrgId('educazen');
-      setPage('dashboard');
-      localStorage.setItem('eiden_user', JSON.stringify(userData));
-      return;
-    }
-
-    // 2c. EducaZen Parent Portal
-    if (loginEmail === 'parent@educazen.com' && loginPassword === 'parent123') {
-      const userData = {
-        uid: 'educazen-parent',
-        email: loginEmail,
-        displayName: 'Parent EducaZen',
-        role: 'client',
-        orgId: 'educazen'
-      };
-      setUser(userData);
-      setUserRole('client');
-      setRole('client');
-      setUserOrgId('educazen');
-      setCurrentOrgId('educazen');
-      setPage('dashboard');
-      localStorage.setItem('eiden_user', JSON.stringify(userData));
-      return;
-    }
-
-    // 3. Check Organizations (Dynamic Admins)
-    try {
-      const { data, error } = await supabase.from('organizations').select('*').eq('email', loginEmail).limit(1);
-      
-      if (data && data.length > 0) {
-        const orgData = data[0];
-        if (orgData.password === loginPassword) {
-           const userData = {
-             uid: orgData.id,
-             email: loginEmail,
-             displayName: `${orgData.name} Admin`,
-             role: 'admin',
-             orgId: orgData.id
-           };
-          setUser(userData);
-          setUserRole('admin');
-          setRole('admin');
-          setUserOrgId(orgData.id);
-          setCurrentOrgId(orgData.id);
-          setPage('dashboard');
-          localStorage.setItem('eiden_user', JSON.stringify(userData));
+    // ── LUNJA VILLAGE portal (/lunja-village) ────────────────────────
+    if (loginPortal === 'lunja') {
+      // Lunja guest/client
+      if (loginEmail === 'client@eiden-group.com' && loginPassword === 'client123') {
+        doLogin({ uid: 'client', email: loginEmail, displayName: 'Lunja Client', role: 'client', orgId: 'lunja' }, 'client-overview');
+        return;
+      }
+      // Lunja admin via Supabase orgs table
+      try {
+        const { data } = await supabase.from('organizations').select('*').eq('email', loginEmail).eq('id', 'lunja').limit(1);
+        if (data && data.length > 0 && data[0].password === loginPassword) {
+          doLogin({ uid: data[0].id, email: loginEmail, displayName: `${data[0].name} Admin`, role: 'admin', orgId: 'lunja' }, 'dashboard');
           return;
         }
-      }
-    } catch (err) {
-      console.error('Login error:', err);
+      } catch (err) { console.error(err); }
+      setLoginError('Invalid credentials.');
+      return;
     }
 
-    setLoginError('Invalid email or password.');
+    // ── EDUCAZEN portal (/educazenkids) ──────────────────────────────
+    if (loginPortal === 'educazen') {
+      if (loginEmail === 'admin@educazenkids.com' && loginPassword === 'educazen123') {
+        doLogin({ uid: 'educazen-admin', email: loginEmail, displayName: 'EducaZen Admin', role: 'admin', orgId: 'educazen' }, 'dashboard');
+        return;
+      }
+      if (loginEmail === 'parent@educazen.com' && loginPassword === 'parent123') {
+        doLogin({ uid: 'educazen-parent', email: loginEmail, displayName: 'Parent EducaZen', role: 'client', orgId: 'educazen' }, 'dashboard');
+        return;
+      }
+      setLoginError('Identifiants incorrects.');
+      return;
+    }
   };
 
   const logActivity = async (action: string, targetType: string, targetName: string, orgId: string) => {
@@ -1156,70 +1095,7 @@ export default function App() {
         {!user ? (
           /* ── Full-screen portal overlay (covers header) ── */
           <div style={{position:'fixed',inset:0,zIndex:100,overflowY:'auto'}}>
-            {loginPortal === null ? (
-
-              /* ════════════════════════════════════════
-                 PORTAL SELECTOR — Dark Eiden canvas
-              ════════════════════════════════════════ */
-              <div style={{background:'#0A0F0C',minHeight:'100vh',fontFamily:'"Outfit",sans-serif',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 24px 60px',position:'relative',overflow:'hidden'}}>
-                {/* Blobs */}
-                <div style={{position:'fixed',width:'40vw',height:'40vw',top:'-15%',right:'-10%',background:'rgba(12,87,82,.22)',filter:'blur(100px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
-                <div style={{position:'fixed',width:'26vw',height:'26vw',bottom:'-10%',left:'-5%',background:'rgba(12,87,82,.10)',filter:'blur(80px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
-                {/* Watermark */}
-                <div style={{position:'fixed',bottom:'-30px',right:'20px',fontFamily:'"Outfit",sans-serif',fontWeight:800,fontSize:'clamp(120px,18vw,240px)',color:'rgba(207,194,146,.03)',pointerEvents:'none',lineHeight:1,userSelect:'none',letterSpacing:'-6px',zIndex:0}}>EIDEN</div>
-
-                {/* Header text */}
-                <div style={{position:'relative',zIndex:2,textAlign:'center',marginBottom:'52px'}}>
-                  <div style={{fontFamily:'"Cormorant Garamond",serif',fontWeight:600,fontSize:'11px',letterSpacing:'6px',textTransform:'uppercase',color:'rgba(207,194,146,.45)',marginBottom:'14px'}}>EIDEN GROUP · WORKSPACE</div>
-                  <h1 style={{fontFamily:'"Outfit",sans-serif',fontWeight:700,fontSize:'clamp(26px,4vw,40px)',color:'#FEFDFB',letterSpacing:'-1px',marginBottom:'10px'}}>Select Your Portal</h1>
-                  <p style={{fontFamily:'"Inter",sans-serif',fontSize:'14px',color:'rgba(254,253,251,.32)',lineHeight:1.6}}>Choose the workspace you'd like to access</p>
-                </div>
-
-                {/* Portal cards */}
-                <div style={{position:'relative',zIndex:2,display:'flex',flexWrap:'wrap',gap:'20px',justifyContent:'center',maxWidth:'920px',width:'100%'}}>
-
-                  {/* ── Eiden Group ── */}
-                  <button onClick={() => { setLoginPortal('eiden'); setLoginError(''); }} style={{background:'rgba(12,87,82,.10)',border:'1px solid rgba(12,87,82,.32)',borderRadius:'2px',padding:'36px 32px',width:'clamp(220px,28vw,272px)',cursor:'pointer',textAlign:'left',transition:'all .25s',position:'relative',overflow:'hidden',outline:'none'}}
-                    onMouseEnter={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(12,87,82,.20)';t.style.borderColor='rgba(12,87,82,.65)';t.style.transform='translateY(-4px)';}}
-                    onMouseLeave={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(12,87,82,.10)';t.style.borderColor='rgba(12,87,82,.32)';t.style.transform='translateY(0)';}}
-                  >
-                    <div style={{position:'absolute',top:0,left:0,right:0,height:'2px',background:'#0C5752'}} />
-                    <div style={{fontFamily:'"Outfit",sans-serif',fontWeight:700,fontSize:'22px',letterSpacing:'5px',textTransform:'uppercase',color:'#FEFDFB',marginBottom:'6px'}}>EIDEN</div>
-                    <div style={{fontFamily:'"Cormorant Garamond",serif',fontStyle:'italic',fontSize:'11px',letterSpacing:'2px',color:'rgba(207,194,146,.55)',textTransform:'uppercase',marginBottom:'22px'}}>Group · Super Admin</div>
-                    <div style={{fontFamily:'"Inter",sans-serif',fontSize:'13px',color:'rgba(254,253,251,.42)',lineHeight:1.65,marginBottom:'26px'}}>Full system access across all organizations, analytics and global controls.</div>
-                    <div style={{display:'flex',alignItems:'center',gap:'8px',fontFamily:'"Outfit",sans-serif',fontSize:'11px',letterSpacing:'3px',textTransform:'uppercase',color:'#0E7A73'}}>Access <span style={{fontSize:'16px',letterSpacing:0}}>→</span></div>
-                  </button>
-
-                  {/* ── Lunja Village ── */}
-                  <button onClick={() => { setLoginPortal('lunja'); setLoginError(''); }} style={{background:'rgba(43,186,165,.06)',border:'1px solid rgba(43,186,165,.18)',borderRadius:'24px',padding:'36px 32px',width:'clamp(220px,28vw,272px)',cursor:'pointer',textAlign:'left',transition:'all .25s',position:'relative',overflow:'hidden',outline:'none'}}
-                    onMouseEnter={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(43,186,165,.12)';t.style.borderColor='rgba(43,186,165,.50)';t.style.transform='translateY(-4px)';}}
-                    onMouseLeave={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(43,186,165,.06)';t.style.borderColor='rgba(43,186,165,.18)';t.style.transform='translateY(0)';}}
-                  >
-                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg,#2BBAA5,#F9A822,#F96635,#2BBAA5)'}} />
-                    <div style={{fontFamily:'"Great Vibes",cursive',fontSize:'40px',color:'#2BBAA5',marginBottom:'4px',lineHeight:1.15}}>Lunja Village</div>
-                    <div style={{fontFamily:'"DM Sans",sans-serif',fontWeight:500,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(254,253,251,.38)',marginBottom:'22px'}}>Resort · Management</div>
-                    <div style={{fontFamily:'"DM Sans",sans-serif',fontSize:'13px',color:'rgba(254,253,251,.42)',lineHeight:1.65,marginBottom:'26px'}}>Manage guest relations, bookings, leads and resort operations.</div>
-                    <div style={{display:'flex',alignItems:'center',gap:'8px',fontFamily:'"Righteous",sans-serif',fontSize:'11px',letterSpacing:'1px',color:'#2BBAA5'}}>Access <span style={{fontSize:'16px',letterSpacing:0}}>→</span></div>
-                  </button>
-
-                  {/* ── EducaZen Kids ── */}
-                  <button onClick={() => { setLoginPortal('educazen'); setLoginError(''); }} style={{background:'rgba(194,24,91,.06)',border:'1px solid rgba(194,24,91,.18)',borderRadius:'20px',padding:'36px 32px',width:'clamp(220px,28vw,272px)',cursor:'pointer',textAlign:'left',transition:'all .25s',position:'relative',overflow:'hidden',outline:'none'}}
-                    onMouseEnter={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(194,24,91,.12)';t.style.borderColor='rgba(194,24,91,.45)';t.style.transform='translateY(-4px)';}}
-                    onMouseLeave={e=>{const t=e.currentTarget as HTMLElement;t.style.background='rgba(194,24,91,.06)';t.style.borderColor='rgba(194,24,91,.18)';t.style.transform='translateY(0)';}}
-                  >
-                    <div style={{position:'absolute',top:0,left:0,right:0,height:'3px',background:'linear-gradient(90deg,#C2185B,#7B1FA2,#00897B,#F9A825)'}} />
-                    <img src="/educazen.png" alt="EducazenKids" style={{width:'72px',marginBottom:'10px',display:'block'}} onError={e=>(e.currentTarget.style.display='none')} />
-                    <div style={{fontFamily:'"Nunito",sans-serif',fontWeight:900,fontSize:'17px',color:'#FEFDFB',marginBottom:'4px'}}>EducazenKids</div>
-                    <div style={{fontFamily:'"Quicksand",sans-serif',fontWeight:500,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(254,253,251,.38)',marginBottom:'22px'}}>Centre Éducatif · Agadir</div>
-                    <div style={{fontFamily:'"Quicksand",sans-serif',fontSize:'13px',color:'rgba(254,253,251,.42)',lineHeight:1.65,marginBottom:'26px'}}>Suivi pédagogique, présences, paiements et gestion des élèves.</div>
-                    <div style={{display:'flex',alignItems:'center',gap:'8px',fontFamily:'"Nunito",sans-serif',fontWeight:700,fontSize:'11px',letterSpacing:'1px',color:'#C2185B'}}>Accéder <span style={{fontSize:'16px',letterSpacing:0}}>→</span></div>
-                  </button>
-                </div>
-
-                <div style={{position:'relative',zIndex:2,marginTop:'52px',fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',letterSpacing:'4px',textTransform:'uppercase',color:'rgba(207,194,146,.16)'}}>© 2026 EIDEN Group · All portals secured</div>
-              </div>
-
-            ) : loginPortal === 'eiden' ? (
+            {loginPortal === 'eiden' ? (
 
               /* ════════════════════════════════════════
                  EIDEN LOGIN — Dark forest, sharp edges
@@ -1240,11 +1116,6 @@ export default function App() {
                 <div style={{position:'fixed',width:'26vw',height:'26vw',bottom:'-10%',left:'-5%',background:'rgba(12,87,82,.14)',filter:'blur(80px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
                 {/* Watermark */}
                 <div style={{position:'fixed',bottom:'-30px',right:'30px',fontFamily:'"Outfit",sans-serif',fontWeight:800,fontSize:'clamp(160px,22vw,300px)',color:'rgba(207,194,146,.03)',pointerEvents:'none',lineHeight:1,userSelect:'none',letterSpacing:'-6px',zIndex:0}}>EIDEN</div>
-                {/* Back */}
-                <button onClick={()=>{setLoginPortal(null);setLoginError('');}} style={{position:'fixed',left:'24px',top:'44px',zIndex:20,fontFamily:'"Cormorant Garamond",serif',fontWeight:600,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(207,194,146,.4)',background:'none',border:'none',cursor:'pointer',transition:'color .2s',padding:0}}
-                  onMouseEnter={e=>(e.currentTarget.style.color='rgba(207,194,146,.85)')}
-                  onMouseLeave={e=>(e.currentTarget.style.color='rgba(207,194,146,.4)')}
-                >← All Portals</button>
 
                 <div style={{position:'relative',zIndex:2,flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'80px 24px 60px',minHeight:'100vh'}}>
                   <div style={{background:'#FEFDFB',borderRadius:'2px',padding:'clamp(36px,5vw,56px) clamp(26px,5vw,52px)',width:'100%',maxWidth:'440px',boxShadow:'0 2px 4px rgba(0,0,0,.2),0 12px 40px rgba(0,0,0,.38),0 32px 80px rgba(0,0,0,.25)',position:'relative',overflow:'hidden'}}>
@@ -1298,11 +1169,6 @@ export default function App() {
                 <div style={{position:'fixed',width:'20vw',height:'20vw',top:'40%',left:'5%',background:'rgba(249,102,53,.06)',filter:'blur(70px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
                 {/* Watermark */}
                 <div style={{position:'fixed',bottom:'-40px',right:'-10px',fontFamily:'"Great Vibes",cursive',fontSize:'clamp(180px,24vw,320px)',color:'#2BBAA5',opacity:.04,pointerEvents:'none',lineHeight:1,userSelect:'none',zIndex:0}}>Lunja</div>
-                {/* Back */}
-                <button onClick={()=>{setLoginPortal(null);setLoginError('');}} style={{position:'fixed',left:'24px',top:'24px',zIndex:20,fontFamily:'"DM Sans",sans-serif',fontWeight:600,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.32)',background:'none',border:'none',cursor:'pointer',transition:'color .2s',padding:0}}
-                  onMouseEnter={e=>(e.currentTarget.style.color='#2BBAA5')}
-                  onMouseLeave={e=>(e.currentTarget.style.color='rgba(26,18,8,.32)')}
-                >← All Portals</button>
 
                 <div style={{position:'relative',zIndex:2,flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 24px 60px',minHeight:'100vh'}}>
                   <div style={{background:'#FFFDF7',borderRadius:'24px',padding:'clamp(36px,5vw,56px) clamp(26px,5vw,52px)',width:'100%',maxWidth:'440px',boxShadow:'0 2px 4px rgba(43,186,165,.04),0 8px 28px rgba(43,186,165,.09),0 24px 56px rgba(26,18,8,.06)',position:'relative',overflow:'hidden'}}>
@@ -1356,11 +1222,6 @@ export default function App() {
                 <div style={{position:'fixed',width:'18vw',height:'18vw',top:'30%',left:'7%',background:'#E8F8F5',opacity:.5,filter:'blur(70px)',borderRadius:'50%',pointerEvents:'none',zIndex:0}} />
                 {/* Watermark */}
                 <div style={{position:'fixed',bottom:'-60px',right:'-60px',fontSize:'clamp(200px,28vw,360px)',opacity:.025,pointerEvents:'none',zIndex:0,lineHeight:1,color:'#C2185B',fontFamily:'"Nunito",sans-serif',fontWeight:900,userSelect:'none'}}>🧩</div>
-                {/* Back */}
-                <button onClick={()=>{setLoginPortal(null);setLoginError('');}} style={{position:'fixed',left:'24px',top:'24px',zIndex:20,fontFamily:'"Quicksand",sans-serif',fontWeight:600,fontSize:'10px',letterSpacing:'3px',textTransform:'uppercase',color:'rgba(45,45,58,.32)',background:'none',border:'none',cursor:'pointer',transition:'color .2s',padding:0}}
-                  onMouseEnter={e=>(e.currentTarget.style.color='#C2185B')}
-                  onMouseLeave={e=>(e.currentTarget.style.color='rgba(45,45,58,.32)')}
-                >← Tous les portails</button>
 
                 <div style={{position:'relative',zIndex:2,flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 24px 60px',minHeight:'100vh'}}>
                   <div style={{background:'#FFFFFF',borderRadius:'20px',padding:'clamp(36px,5vw,56px) clamp(26px,5vw,52px)',width:'100%',maxWidth:'440px',boxShadow:'0 2px 4px rgba(194,24,91,.04),0 8px 28px rgba(194,24,91,.08),0 24px 56px rgba(45,45,58,.06)',position:'relative',overflow:'hidden'}}>
