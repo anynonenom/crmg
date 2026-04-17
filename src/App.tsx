@@ -208,6 +208,10 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userOrgId, setUserOrgId] = useState<string | null>(null);
 
+  // Notifications
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
   // Real-time data states
   const [guests, setGuests] = useState<Guest[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -327,6 +331,30 @@ export default function App() {
     }
   }, [role, userOrgId, user]);
 
+  // ── Notifications ──
+  const fetchNotifications = React.useCallback(async () => {
+    if (!user) return;
+    let q = supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(30);
+    if (userRole !== 'superadmin' && userOrgId) q = q.eq('org_id', userOrgId);
+    const { data } = await q;
+    if (data) setNotifications(data);
+  }, [user, userRole, userOrgId]);
+
+  const createNotification = React.useCallback(async (orgId: string, title: string, message: string, type = 'info') => {
+    const id = `notif-${Date.now()}`;
+    await supabase.from('notifications').insert({ id, org_id: orgId, title, message, type, read: false });
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const markAllRead = React.useCallback(async () => {
+    await supabase.from('notifications').update({ read: true }).eq('read', false);
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  React.useEffect(() => { if (user) fetchNotifications(); }, [user, fetchNotifications]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
   // Centralized fetch helpers
   const fetchOrgs = React.useCallback(async () => {
     const { data } = await supabase.from('organizations').select('*');
@@ -445,7 +473,26 @@ export default function App() {
       return;
     }
 
-    // 2b. EducaZen Parent Portal
+    // 2b. EducaZen Admin
+    if (loginEmail === 'admin@educazenkids.com' && loginPassword === 'educazen123') {
+      const userData = {
+        uid: 'educazen-admin',
+        email: loginEmail,
+        displayName: 'EducaZen Admin',
+        role: 'admin',
+        orgId: 'educazen'
+      };
+      setUser(userData);
+      setUserRole('admin');
+      setRole('admin');
+      setUserOrgId('educazen');
+      setCurrentOrgId('educazen');
+      setPage('dashboard');
+      localStorage.setItem('eiden_user', JSON.stringify(userData));
+      return;
+    }
+
+    // 2c. EducaZen Parent Portal
     if (loginEmail === 'parent@educazen.com' && loginPassword === 'parent123') {
       const userData = {
         uid: 'educazen-parent',
@@ -929,6 +976,17 @@ export default function App() {
     }
   };
 
+  // Close notification dropdown on outside click
+  React.useEffect(() => {
+    if (!showNotifDropdown) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-notif]')) setShowNotifDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showNotifDropdown]);
+
   const filteredGuests = useMemo(() => {
     return guests.filter(g => 
       (g.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
@@ -950,80 +1008,110 @@ export default function App() {
   return (
     <div className="min-h-screen bg-cream flex flex-col">
       {/* Top Bar */}
-      <header className="h-16 bg-brand-primary border-b border-brand-secondary/20 flex items-center justify-between px-4 md:px-6 sticky top-0 z-50 shadow-md">
+      {(() => {
+        const isEz = userOrgId === 'educazen';
+        const hBg = isEz ? 'bg-white border-b border-gray-200 shadow-sm' : 'bg-brand-primary border-b border-brand-secondary/20 shadow-md';
+        const hMenuBtn = isEz ? 'text-gray-600 hover:text-gray-900' : 'text-brand-secondary/80 hover:text-brand-secondary';
+        const hSep = isEz ? 'bg-gray-200' : 'bg-brand-secondary/30';
+        const hSub = isEz ? 'text-gray-400' : 'text-brand-secondary/60';
+        const hBell = isEz ? 'text-gray-500 hover:text-gray-800 hover:bg-gray-100' : 'text-white/60 hover:text-white hover:bg-white/10';
+        const hAvatar = isEz ? 'bg-[#FFF0F5] text-[#C2185B] border-[#C2185B]/20' : 'bg-brand-secondary/20 text-brand-secondary border-brand-secondary/30';
+        return (
+      <header className={`h-16 ${hBg} flex items-center justify-between px-4 md:px-6 sticky top-0 z-50`}>
         <div className="flex items-center gap-2 md:gap-4">
-          <button 
-            className="md:hidden p-2 text-brand-secondary/80 hover:text-brand-secondary transition-colors"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
+          <button className={`md:hidden p-2 transition-colors ${hMenuBtn}`} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-          {userOrgId === 'educazen' ? (
-            <img src="/educazen.png" alt="EducazenKids" className="h-9 w-auto" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-          ) : (
-            <div className="text-2xl font-brand-head text-brand-secondary">
-              {role === 'superadmin' ? 'Eiden Solutions' : (organizations.find(o => o.id === userOrgId)?.name || 'Lunja Village')}
+            {isEz ? (
+              <img src="/educazen.png" alt="EducazenKids" className="h-9 w-auto" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+            ) : (
+              <div className="text-2xl font-brand-head text-brand-secondary">
+                {role === 'superadmin' ? 'Eiden Solutions' : (organizations.find(o => o.id === userOrgId)?.name || 'Lunja Village')}
+              </div>
+            )}
+            <div className={`h-4 w-[1px] mx-2 ${hSep}`} />
+            <div className={`hidden sm:block text-[10px] font-brand-body uppercase tracking-[0.2em] ${hSub}`} style={isEz ? { fontFamily: 'Cormorant Garamond, serif' } : {}}>
+              {role === 'superadmin' ? 'SuperAdmin Portal' : role === 'admin' ? isEz ? 'Espace Administrateur' : 'Manager Portal' : isEz ? 'Espace Parent' : 'Guest Portal'}
             </div>
-          )}
-          <div className="h-4 w-[1px] bg-brand-secondary/30 mx-2" />
-          <div className="hidden sm:block text-[10px] font-brand-body uppercase tracking-[0.2em] text-brand-secondary/60">
-            {role === 'superadmin' ? 'SuperAdmin Portal' : role === 'admin' ? 'Manager Portal' : 'Guest Portal'}
-          </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           {user && userRole === 'superadmin' && (
-            <div className="hidden sm:flex items-center gap-4">
-              <button 
-                onClick={seedData}
-                className="btn btn-brand text-[10px] py-1 flex items-center gap-2"
-              >
+            <div className="hidden sm:flex items-center gap-3">
+              <button onClick={seedData} className="btn btn-brand text-[10px] py-1 flex items-center gap-2">
                 <Database size={12} /> Seed Data
               </button>
-              <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg border border-brand-secondary/20">
-                <Palmtree size={14} className="text-brand-secondary" />
-                <select 
-                  className="bg-transparent text-white text-xs font-brand-body focus:outline-none cursor-pointer"
-                  value={currentOrgId || ''}
-                  onChange={(e) => setCurrentOrgId(e.target.value || null)}
-                >
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isEz ? 'bg-gray-50 border-gray-200' : 'bg-white/10 border-brand-secondary/20'}`}>
+                <Palmtree size={14} className={isEz ? 'text-gray-400' : 'text-brand-secondary'} />
+                <select className={`bg-transparent text-xs font-brand-body focus:outline-none cursor-pointer ${isEz ? 'text-gray-700' : 'text-white'}`}
+                  value={currentOrgId || ''} onChange={e => setCurrentOrgId(e.target.value || null)}>
                   <option value="" className="text-ink">All Organizations</option>
-                  {organizations.map(org => (
-                    <option key={org.id} value={org.id} className="text-ink">{org.name}</option>
-                  ))}
+                  {organizations.map(org => <option key={org.id} value={org.id} className="text-ink">{org.name}</option>)}
                 </select>
               </div>
             </div>
           )}
 
-          <div className="flex items-center gap-3 ml-4">
+          <div className="flex items-center gap-2">
             {!user ? (
-              <button 
-                onClick={() => setPage('dashboard')}
-                className="btn btn-coral"
-              >
-                Sign In
-              </button>
+              <button onClick={() => setPage('dashboard')} className="btn btn-coral">Sign In</button>
             ) : (
               <>
-                <button className="p-2 text-white/60 hover:text-white transition-colors relative">
-                  <Bell size={20} />
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-brand-secondary rounded-full border-2 border-brand-primary" />
-                </button>
-                <div className="w-8 h-8 rounded-full bg-brand-secondary/20 flex items-center justify-center text-brand-secondary font-bold text-xs border border-brand-secondary/30 overflow-hidden">
-                  {user.photoURL ? (
-                    <img src={user.photoURL} alt={user.displayName || ''} referrerPolicy="no-referrer" />
-                  ) : (
-                    role === 'superadmin' ? 'SA' : role === 'admin' ? 'AD' : 'GS'
+                {/* Notification Bell */}
+                <div className="relative" data-notif="true">
+                  <button onClick={() => setShowNotifDropdown(v => !v)}
+                    className={`p-2 rounded-lg transition-colors relative ${hBell}`}>
+                    <Bell size={19} />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {showNotifDropdown && (
+                    <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+                        <span className="font-bold text-sm text-gray-800">Notifications</span>
+                        <div className="flex items-center gap-2">
+                          {unreadCount > 0 && (
+                            <button onClick={markAllRead} className="text-xs text-brand-primary hover:underline">Tout lire</button>
+                          )}
+                          <button onClick={() => setShowNotifDropdown(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                        {notifications.length === 0 ? (
+                          <p className="p-5 text-center text-xs text-gray-400">Aucune notification.</p>
+                        ) : notifications.map(n => (
+                          <div key={n.id} className={`px-4 py-3 flex items-start gap-3 ${!n.read ? 'bg-brand-primary/5' : ''}`}>
+                            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.type === 'success' ? 'bg-teal-400' : n.type === 'warning' ? 'bg-amber-400' : n.type === 'error' ? 'bg-rose-400' : 'bg-blue-400'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-gray-800">{n.title}</p>
+                              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{n.message}</p>
+                              <p className="text-[10px] text-gray-300 mt-1">{new Date(n.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
+                </div>
+
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border overflow-hidden ${hAvatar}`}>
+                  {user.photoURL ? <img src={user.photoURL} alt={user.displayName || ''} referrerPolicy="no-referrer" /> : role === 'superadmin' ? 'SA' : role === 'admin' ? 'AD' : 'GS'}
                 </div>
               </>
             )}
           </div>
         </div>
       </header>
+        );
+      })()}
 
       <div className="flex flex-1 overflow-hidden">
         {!user ? (
@@ -1151,6 +1239,8 @@ export default function App() {
                 <EducazenDashboard
                   role={role === 'client' ? 'parent' : 'admin'}
                   userEmail={user?.email}
+                  orgId="educazen"
+                  onNotify={createNotification}
                 />
               ) : role === 'admin' || role === 'superadmin' ? (
                 <>

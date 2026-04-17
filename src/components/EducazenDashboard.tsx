@@ -1,185 +1,133 @@
-import React, { useState, useMemo } from 'react';
+/**
+ * EducazenDashboard — Centre Éducatif & Psychosocial
+ *
+ * SUPABASE SQL — run once in your Supabase SQL editor:
+ * ─────────────────────────────────────────────────────
+ * create table if not exists ez_students (
+ *   id text primary key, org_id text not null,
+ *   prenom text, nom text, date_naissance text, sexe text default 'M',
+ *   classe text, profil text default 'Standard', statut text default 'Actif',
+ *   date_inscription text, montant_mensuel integer default 1200,
+ *   parent1_relation text default 'Mère', parent1_prenom text, parent1_nom text,
+ *   parent1_email text, parent1_telephone text, parent1_profession text,
+ *   parent2_relation text, parent2_prenom text, parent2_nom text,
+ *   parent2_email text, parent2_telephone text,
+ *   adresse text, ville text, besoins_speciaux text, notes_medicales text,
+ *   created_at timestamptz default now()
+ * );
+ * create table if not exists ez_classes (
+ *   id text primary key, org_id text not null, nom text, niveau text,
+ *   enseignant text, horaire_debut text, horaire_fin text, jours text,
+ *   salle text, capacite integer default 15, created_at timestamptz default now()
+ * );
+ * create table if not exists ez_attendance (
+ *   id text primary key, org_id text not null, student_id text not null,
+ *   date text not null, statut text not null, note text,
+ *   created_at timestamptz default now()
+ * );
+ * create table if not exists ez_payments (
+ *   id text primary key, org_id text not null, student_id text not null,
+ *   mois text not null, montant integer not null, statut text default 'Non payé',
+ *   date_paiement text, mode_paiement text, notes text,
+ *   created_at timestamptz default now()
+ * );
+ * create table if not exists ez_assignments (
+ *   id text primary key, org_id text not null, titre text not null,
+ *   matiere text, classe text, date_limite text, description text,
+ *   created_at timestamptz default now()
+ * );
+ * create table if not exists ez_grades (
+ *   id text primary key, org_id text not null, assignment_id text not null,
+ *   student_id text not null, note numeric(4,1), commentaire text,
+ *   created_at timestamptz default now()
+ * );
+ * create table if not exists ez_staff (
+ *   id text primary key, org_id text not null, prenom text, nom text,
+ *   role text, matiere text, email text, telephone text,
+ *   date_embauche text, statut text default 'Actif', created_at timestamptz default now()
+ * );
+ * create table if not exists notifications (
+ *   id text primary key, org_id text not null, title text, message text,
+ *   type text default 'info', read boolean default false,
+ *   created_at timestamptz default now()
+ * );
+ */
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   LayoutDashboard, Users, Calendar, CheckSquare, CreditCard,
-  BookOpen, UserCog, Plus, Search, X, Check, Pencil, Trash2,
-  Phone, Mail, ChevronRight, AlertCircle, Clock, Star,
-  TrendingUp, TrendingDown, GraduationCap, BookMarked, ClipboardList
+  BookMarked, UserCog, Plus, Search, X, Pencil, Trash2,
+  Phone, Mail, Clock, AlertCircle, ChevronDown, ChevronUp,
+  GraduationCap, TrendingDown, RefreshCw, Save, Database
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 type EzTab = 'dashboard' | 'eleves' | 'classes' | 'presences' | 'paiements' | 'devoirs' | 'personnel';
-
 type Profil = 'Standard' | 'HPI' | 'TDAH' | 'DYS' | 'TSA';
-type StatutEleve = 'Actif' | 'Parti';
 type StatutPresence = 'Présent' | 'Absent' | 'Retard';
 type StatutPaiement = 'Payé' | 'Non payé' | 'Partiel';
 
-interface Eleve {
-  id: string;
-  prenom: string;
-  nom: string;
-  age: number;
-  classe: string;
-  profil: Profil;
-  nomParent: string;
-  emailParent: string;
-  telephone: string;
-  dateInscription: string;
-  statut: StatutEleve;
-  montantMensuel: number;
+export interface EzStudent {
+  id: string; org_id: string;
+  prenom: string; nom: string; date_naissance: string; sexe: string;
+  classe: string; profil: Profil; statut: string;
+  date_inscription: string; montant_mensuel: number;
+  parent1_relation: string; parent1_prenom: string; parent1_nom: string;
+  parent1_email: string; parent1_telephone: string; parent1_profession: string;
+  parent2_relation: string; parent2_prenom: string; parent2_nom: string;
+  parent2_email: string; parent2_telephone: string;
+  adresse: string; ville: string; besoins_speciaux: string; notes_medicales: string;
 }
 
-interface Classe {
-  id: string;
-  nom: string;
-  enseignant: string;
-  niveau: string;
-  horaire: string;
-  salle: string;
-  effectif: number;
-  jours: string;
+export interface EzClass {
+  id: string; org_id: string; nom: string; niveau: string;
+  enseignant: string; horaire_debut: string; horaire_fin: string;
+  jours: string; salle: string; capacite: number;
 }
 
-interface Presence {
-  id: string;
-  eleveId: string;
-  date: string;
-  statut: StatutPresence;
-  classe: string;
+export interface EzAttendance {
+  id: string; org_id: string; student_id: string;
+  date: string; statut: StatutPresence; note: string;
 }
 
-interface Paiement {
-  id: string;
-  eleveId: string;
-  mois: string;
-  montant: number;
-  statut: StatutPaiement;
-  datePaiement?: string;
+export interface EzPayment {
+  id: string; org_id: string; student_id: string;
+  mois: string; montant: number; statut: StatutPaiement;
+  date_paiement: string; mode_paiement: string; notes: string;
 }
 
-interface Devoir {
-  id: string;
-  titre: string;
-  matiere: string;
-  classe: string;
-  dateLimite: string;
-  description: string;
+export interface EzAssignment {
+  id: string; org_id: string; titre: string; matiere: string;
+  classe: string; date_limite: string; description: string;
 }
 
-interface Note {
-  id: string;
-  devoirId: string;
-  eleveId: string;
-  note: number;
-  commentaire: string;
+export interface EzGrade {
+  id: string; org_id: string; assignment_id: string;
+  student_id: string; note: number; commentaire: string;
 }
 
-interface Personnel {
-  id: string;
-  prenom: string;
-  nom: string;
-  role: string;
-  matiere: string;
-  email: string;
-  telephone: string;
-  dateEmbauche: string;
-  statut: 'Actif' | 'Congé';
+export interface EzStaff {
+  id: string; org_id: string; prenom: string; nom: string;
+  role: string; matiere: string; email: string; telephone: string;
+  date_embauche: string; statut: string;
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const MOCK_ELEVES: Eleve[] = [
-  { id: 'e1', prenom: 'Yasmine', nom: 'Benhaddou', age: 9, classe: 'CE2-A', profil: 'HPI', nomParent: 'Fatima Benhaddou', emailParent: 'parent@educazen.com', telephone: '0661234567', dateInscription: '2025-09-01', statut: 'Actif', montantMensuel: 1200 },
-  { id: 'e2', prenom: 'Amine', nom: 'Ouali', age: 8, classe: 'CE1-B', profil: 'TDAH', nomParent: 'Karim Ouali', emailParent: 'karim.ouali@gmail.com', telephone: '0662345678', dateInscription: '2025-09-01', statut: 'Actif', montantMensuel: 1200 },
-  { id: 'e3', prenom: 'Inès', nom: 'Sabri', age: 10, classe: 'CM1-A', profil: 'DYS', nomParent: 'Nadia Sabri', emailParent: 'nadia.sabri@gmail.com', telephone: '0663456789', dateInscription: '2025-09-01', statut: 'Actif', montantMensuel: 1400 },
-  { id: 'e4', prenom: 'Omar', nom: 'Tazi', age: 7, classe: 'CP-A', profil: 'Standard', nomParent: 'Hassan Tazi', emailParent: 'hassan.tazi@gmail.com', telephone: '0664567890', dateInscription: '2025-09-01', statut: 'Actif', montantMensuel: 1100 },
-  { id: 'e5', prenom: 'Salma', nom: 'Cherkaoui', age: 11, classe: 'CM2-A', profil: 'TSA', nomParent: 'Aïcha Cherkaoui', emailParent: 'aicha.cherkaoui@gmail.com', telephone: '0665678901', dateInscription: '2025-09-01', statut: 'Actif', montantMensuel: 1500 },
-  { id: 'e6', prenom: 'Mehdi', nom: 'Bennani', age: 8, classe: 'CE1-B', profil: 'Standard', nomParent: 'Said Bennani', emailParent: 'said.bennani@gmail.com', telephone: '0666789012', dateInscription: '2025-10-01', statut: 'Actif', montantMensuel: 1200 },
-  { id: 'e7', prenom: 'Lina', nom: 'Alaoui', age: 9, classe: 'CE2-A', profil: 'HPI', nomParent: 'Zineb Alaoui', emailParent: 'zineb.alaoui@gmail.com', telephone: '0667890123', dateInscription: '2025-09-01', statut: 'Actif', montantMensuel: 1200 },
-  { id: 'e8', prenom: 'Rayan', nom: 'Fassi', age: 10, classe: 'CM1-A', profil: 'TDAH', nomParent: 'Youssef Fassi', emailParent: 'youssef.fassi@gmail.com', telephone: '0668901234', dateInscription: '2026-01-15', statut: 'Parti', montantMensuel: 1400 },
-  { id: 'e9', prenom: 'Douaa', nom: 'Berrada', age: 7, classe: 'CP-A', profil: 'Standard', nomParent: 'Meriem Berrada', emailParent: 'meriem.berrada@gmail.com', telephone: '0669012345', dateInscription: '2025-09-01', statut: 'Actif', montantMensuel: 1100 },
-  { id: 'e10', prenom: 'Adam', nom: 'Lahlou', age: 11, classe: 'CM2-A', profil: 'DYS', nomParent: 'Rachid Lahlou', emailParent: 'rachid.lahlou@gmail.com', telephone: '0660123456', dateInscription: '2025-09-01', statut: 'Actif', montantMensuel: 1500 },
-];
+const initStudent = (orgId: string): Partial<EzStudent> => ({
+  org_id: orgId, prenom: '', nom: '', date_naissance: '', sexe: 'M',
+  classe: 'CP-A', profil: 'Standard', statut: 'Actif',
+  date_inscription: new Date().toISOString().slice(0, 10),
+  montant_mensuel: 1200, parent1_relation: 'Mère',
+  parent1_prenom: '', parent1_nom: '', parent1_email: '', parent1_telephone: '',
+  parent1_profession: '', parent2_relation: 'Père', parent2_prenom: '',
+  parent2_nom: '', parent2_email: '', parent2_telephone: '',
+  adresse: '', ville: 'Agadir', besoins_speciaux: '', notes_medicales: '',
+});
 
-const MOCK_CLASSES: Classe[] = [
-  { id: 'c1', nom: 'CP-A', enseignant: 'Mme. Karima Idrissi', niveau: 'CP', horaire: '08:30 – 12:30', salle: 'Salle 1', effectif: 2, jours: 'Lun – Ven' },
-  { id: 'c2', nom: 'CE1-B', enseignant: 'M. Tarik Benali', niveau: 'CE1', horaire: '08:30 – 12:30', salle: 'Salle 2', effectif: 2, jours: 'Lun – Ven' },
-  { id: 'c3', nom: 'CE2-A', enseignant: 'Mme. Sanaa Bakkali', niveau: 'CE2', horaire: '08:30 – 13:00', salle: 'Salle 3', effectif: 2, jours: 'Lun – Ven' },
-  { id: 'c4', nom: 'CM1-A', enseignant: 'M. Yassine Mourad', niveau: 'CM1', horaire: '08:30 – 13:30', salle: 'Salle 4', effectif: 2, jours: 'Lun – Ven' },
-  { id: 'c5', nom: 'CM2-A', enseignant: 'Mme. Hind Zouari', niveau: 'CM2', horaire: '08:30 – 14:00', salle: 'Salle 5', effectif: 2, jours: 'Lun – Ven' },
-];
-
-const MOCK_PRESENCES: Presence[] = [
-  { id: 'p1', eleveId: 'e1', date: '2026-04-14', statut: 'Présent', classe: 'CE2-A' },
-  { id: 'p2', eleveId: 'e2', date: '2026-04-14', statut: 'Retard', classe: 'CE1-B' },
-  { id: 'p3', eleveId: 'e3', date: '2026-04-14', statut: 'Présent', classe: 'CM1-A' },
-  { id: 'p4', eleveId: 'e4', date: '2026-04-14', statut: 'Absent', classe: 'CP-A' },
-  { id: 'p5', eleveId: 'e5', date: '2026-04-14', statut: 'Présent', classe: 'CM2-A' },
-  { id: 'p6', eleveId: 'e6', date: '2026-04-14', statut: 'Présent', classe: 'CE1-B' },
-  { id: 'p7', eleveId: 'e7', date: '2026-04-14', statut: 'Présent', classe: 'CE2-A' },
-  { id: 'p8', eleveId: 'e9', date: '2026-04-14', statut: 'Absent', classe: 'CP-A' },
-  { id: 'p9', eleveId: 'e10', date: '2026-04-14', statut: 'Présent', classe: 'CM2-A' },
-  { id: 'p10', eleveId: 'e1', date: '2026-04-15', statut: 'Présent', classe: 'CE2-A' },
-  { id: 'p11', eleveId: 'e2', date: '2026-04-15', statut: 'Présent', classe: 'CE1-B' },
-  { id: 'p12', eleveId: 'e3', date: '2026-04-15', statut: 'Absent', classe: 'CM1-A' },
-  { id: 'p13', eleveId: 'e4', date: '2026-04-15', statut: 'Présent', classe: 'CP-A' },
-  { id: 'p14', eleveId: 'e5', date: '2026-04-15', statut: 'Présent', classe: 'CM2-A' },
-  { id: 'p15', eleveId: 'e9', date: '2026-04-15', statut: 'Retard', classe: 'CP-A' },
-  { id: 'p16', eleveId: 'e10', date: '2026-04-15', statut: 'Présent', classe: 'CM2-A' },
-  { id: 'p17', eleveId: 'e1', date: '2026-04-16', statut: 'Présent', classe: 'CE2-A' },
-  { id: 'p18', eleveId: 'e2', date: '2026-04-16', statut: 'Absent', classe: 'CE1-B' },
-];
-
-const MOCK_PAIEMENTS: Paiement[] = [
-  { id: 'pay1', eleveId: 'e1', mois: 'Avril 2026', montant: 1200, statut: 'Payé', datePaiement: '2026-04-01' },
-  { id: 'pay2', eleveId: 'e2', mois: 'Avril 2026', montant: 1200, statut: 'Non payé' },
-  { id: 'pay3', eleveId: 'e3', mois: 'Avril 2026', montant: 1400, statut: 'Payé', datePaiement: '2026-04-02' },
-  { id: 'pay4', eleveId: 'e4', mois: 'Avril 2026', montant: 1100, statut: 'Partiel', datePaiement: '2026-04-05' },
-  { id: 'pay5', eleveId: 'e5', mois: 'Avril 2026', montant: 1500, statut: 'Payé', datePaiement: '2026-04-01' },
-  { id: 'pay6', eleveId: 'e6', mois: 'Avril 2026', montant: 1200, statut: 'Non payé' },
-  { id: 'pay7', eleveId: 'e7', mois: 'Avril 2026', montant: 1200, statut: 'Payé', datePaiement: '2026-04-03' },
-  { id: 'pay8', eleveId: 'e9', mois: 'Avril 2026', montant: 1100, statut: 'Payé', datePaiement: '2026-04-02' },
-  { id: 'pay9', eleveId: 'e10', mois: 'Avril 2026', montant: 1500, statut: 'Non payé' },
-  { id: 'pay10', eleveId: 'e1', mois: 'Mars 2026', montant: 1200, statut: 'Payé', datePaiement: '2026-03-01' },
-  { id: 'pay11', eleveId: 'e2', mois: 'Mars 2026', montant: 1200, statut: 'Payé', datePaiement: '2026-03-04' },
-  { id: 'pay12', eleveId: 'e3', mois: 'Mars 2026', montant: 1400, statut: 'Payé', datePaiement: '2026-03-02' },
-  { id: 'pay13', eleveId: 'e4', mois: 'Mars 2026', montant: 1100, statut: 'Non payé' },
-  { id: 'pay14', eleveId: 'e5', mois: 'Mars 2026', montant: 1500, statut: 'Payé', datePaiement: '2026-03-01' },
-];
-
-const MOCK_DEVOIRS: Devoir[] = [
-  { id: 'd1', titre: 'Rédaction – Mon Animal Préféré', matiere: 'Français', classe: 'CE2-A', dateLimite: '2026-04-18', description: 'Écrire un texte de 10 lignes sur votre animal préféré.' },
-  { id: 'd2', titre: 'Tables de Multiplication', matiere: 'Mathématiques', classe: 'CE1-B', dateLimite: '2026-04-17', description: 'Apprendre les tables de 6, 7 et 8.' },
-  { id: 'd3', titre: 'Lecture – Le Petit Prince', matiere: 'Lecture', classe: 'CM1-A', dateLimite: '2026-04-20', description: 'Lire les chapitres 1 à 5 et répondre aux questions.' },
-  { id: 'd4', titre: 'Les Fractions', matiere: 'Mathématiques', classe: 'CM2-A', dateLimite: '2026-04-19', description: 'Exercices page 45 du manuel.' },
-  { id: 'd5', titre: 'Dictée Préparée', matiere: 'Français', classe: 'CP-A', dateLimite: '2026-04-16', description: 'Apprendre les 10 mots de la liste.' },
-];
-
-const MOCK_NOTES: Note[] = [
-  { id: 'n1', devoirId: 'd1', eleveId: 'e1', note: 18, commentaire: 'Excellent travail, très créatif.' },
-  { id: 'n2', devoirId: 'd1', eleveId: 'e7', note: 15, commentaire: 'Bon effort, continuer.' },
-  { id: 'n3', devoirId: 'd2', eleveId: 'e2', note: 14, commentaire: 'Quelques erreurs, à revoir.' },
-  { id: 'n4', devoirId: 'd2', eleveId: 'e6', note: 16, commentaire: 'Très bien!' },
-  { id: 'n5', devoirId: 'd3', eleveId: 'e3', note: 17, commentaire: 'Bonne compréhension du texte.' },
-  { id: 'n6', devoirId: 'd4', eleveId: 'e5', note: 12, commentaire: 'Des efforts à fournir.' },
-  { id: 'n7', devoirId: 'd4', eleveId: 'e10', note: 15, commentaire: 'Bien, attention aux signes.' },
-  { id: 'n8', devoirId: 'd5', eleveId: 'e4', note: 19, commentaire: 'Parfait!' },
-  { id: 'n9', devoirId: 'd5', eleveId: 'e9', note: 13, commentaire: '3 fautes, à corriger.' },
-];
-
-const MOCK_PERSONNEL: Personnel[] = [
-  { id: 'st1', prenom: 'Karima', nom: 'Idrissi', role: 'Enseignante', matiere: 'Toutes matières (CP)', email: 'k.idrissi@educazen.com', telephone: '0661100001', dateEmbauche: '2024-09-01', statut: 'Actif' },
-  { id: 'st2', prenom: 'Tarik', nom: 'Benali', role: 'Enseignant', matiere: 'Toutes matières (CE1)', email: 't.benali@educazen.com', telephone: '0661100002', dateEmbauche: '2024-09-01', statut: 'Actif' },
-  { id: 'st3', prenom: 'Sanaa', nom: 'Bakkali', role: 'Enseignante', matiere: 'Toutes matières (CE2)', email: 's.bakkali@educazen.com', telephone: '0661100003', dateEmbauche: '2025-01-15', statut: 'Actif' },
-  { id: 'st4', prenom: 'Yassine', nom: 'Mourad', role: 'Enseignant', matiere: 'Mathématiques & Sciences', email: 'y.mourad@educazen.com', telephone: '0661100004', dateEmbauche: '2024-09-01', statut: 'Actif' },
-  { id: 'st5', prenom: 'Hind', nom: 'Zouari', role: 'Psychopédagogue', matiere: 'Accompagnement PAP', email: 'h.zouari@educazen.com', telephone: '0661100005', dateEmbauche: '2024-09-01', statut: 'Actif' },
-  { id: 'st6', prenom: 'Rim', nom: 'Kettani', role: 'Art-thérapeute', matiere: 'Art-thérapie', email: 'r.kettani@educazen.com', telephone: '0661100006', dateEmbauche: '2025-02-01', statut: 'Congé' },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const profilColor: Record<Profil, string> = {
+const profilColors: Record<string, string> = {
   Standard: 'bg-gray-100 text-gray-600',
   HPI: 'bg-amber-50 text-amber-700 border border-amber-200',
   TDAH: 'bg-violet-50 text-violet-700 border border-violet-200',
@@ -187,657 +135,685 @@ const profilColor: Record<Profil, string> = {
   TSA: 'bg-rose-50 text-rose-700 border border-rose-200',
 };
 
-const presenceBadge: Record<StatutPresence, string> = {
+const presenceStyle: Record<string, string> = {
   'Présent': 'bg-teal-50 text-teal-700',
   'Absent': 'bg-rose-100 text-rose-700',
   'Retard': 'bg-amber-50 text-amber-700',
 };
 
-const paiementBadge: Record<StatutPaiement, string> = {
+const payStyle: Record<string, string> = {
   'Payé': 'bg-teal-50 text-teal-700',
   'Non payé': 'bg-rose-100 text-rose-700',
   'Partiel': 'bg-amber-50 text-amber-700',
 };
 
-const getInitials = (prenom: string, nom: string) =>
-  `${prenom[0]}${nom[0]}`.toUpperCase();
+const EZ_ACCENT = '#C2185B';
+const EZ_VIOLET = '#7B1FA2';
+const EZ_TEAL = '#00897B';
+const EZ_GOLD = '#F9A825';
+const accentList = [EZ_ACCENT, EZ_VIOLET, EZ_TEAL, EZ_GOLD];
+const avatarBg = ['bg-[#FFF0F5] text-[#C2185B]', 'bg-[#F8F0FF] text-[#7B1FA2]', 'bg-[#E8F8F5] text-[#00897B]', 'bg-amber-50 text-amber-700'];
 
-const avatarColors = [
-  'bg-[#FFF0F5] text-[#C2185B]',
-  'bg-[#F8F0FF] text-[#7B1FA2]',
-  'bg-[#E8F8F5] text-[#00897B]',
-  'bg-amber-50 text-amber-700',
-];
+const initials = (p: string, n: string) => `${p?.[0] || ''}${n?.[0] || ''}`.toUpperCase();
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+const EzLabel = ({ children }: { children: React.ReactNode }) => (
+  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>{children}</span>
+);
 
-const EzStatCard = ({ label, value, sub, color }: { label: string; value: string | number; sub: string; color: string }) => (
-  <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif', letterSpacing: '0.15em' }}>{label}</p>
-    <p className="text-3xl font-extrabold mb-1" style={{ fontFamily: 'Nunito, sans-serif', color }}>{value}</p>
-    <p className="text-xs text-gray-500" style={{ fontFamily: 'Quicksand, sans-serif' }}>{sub}</p>
+const EzInput = ({ label, value, onChange, type = 'text', required = false, placeholder = '' }:
+  { label: string; value: string | number; onChange: (v: string) => void; type?: string; required?: boolean; placeholder?: string }) => (
+  <div>
+    <EzLabel>{label}{required && ' *'}</EzLabel>
+    <input
+      type={type} value={value} onChange={e => onChange(e.target.value)}
+      placeholder={placeholder} required={required}
+      className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none text-sm bg-white"
+      style={{ fontFamily: 'Quicksand, sans-serif', borderColor: 'inherit' }}
+      onFocus={e => e.target.style.borderColor = EZ_ACCENT}
+      onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+    />
   </div>
 );
 
-const EzTabBtn = ({ label, icon: Icon, active, onClick }: { label: string; icon: any; active: boolean; onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
-      active ? 'text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-    }`}
-    style={{
-      fontFamily: 'Nunito, sans-serif',
-      backgroundColor: active ? '#C2185B' : undefined,
-    }}
-  >
-    <Icon size={16} />
-    <span className="hidden sm:inline">{label}</span>
+const EzSelect = ({ label, value, onChange, options, required = false }:
+  { label: string; value: string; onChange: (v: string) => void; options: string[]; required?: boolean }) => (
+  <div>
+    <EzLabel>{label}{required && ' *'}</EzLabel>
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none text-sm bg-white"
+      style={{ fontFamily: 'Quicksand, sans-serif' }}>
+      {options.map(o => <option key={o}>{o}</option>)}
+    </select>
+  </div>
+);
+
+const EzStatCard = ({ label, value, sub, color, icon: Icon }: { label: string; value: string | number; sub: string; color: string; icon?: any }) => (
+  <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100">
+    <div className="flex items-start justify-between mb-2">
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest" style={{ fontFamily: 'Cormorant Garamond, serif', letterSpacing: '0.15em' }}>{label}</p>
+      {Icon && <Icon size={16} style={{ color }} />}
+    </div>
+    <p className="text-2xl sm:text-3xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color }}>{value}</p>
+    <p className="text-xs text-gray-400 mt-1" style={{ fontFamily: 'Quicksand, sans-serif' }}>{sub}</p>
+  </div>
+);
+
+const EzTabBtn = ({ label, icon: Icon, active, onClick, count }: { label: string; icon: any; active: boolean; onClick: () => void; count?: number; [k: string]: any }) => (
+  <button onClick={onClick}
+    className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap relative ${active ? 'text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}
+    style={{ fontFamily: 'Nunito, sans-serif', backgroundColor: active ? EZ_ACCENT : undefined }}>
+    <Icon size={15} />
+    <span className="hidden xs:inline">{label}</span>
+    {count !== undefined && count > 0 && (
+      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${active ? 'bg-white/30 text-white' : 'bg-rose-100 text-rose-600'}`}>{count}</span>
+    )}
   </button>
 );
+
+// ─── Seed Data ────────────────────────────────────────────────────────────────
+
+const SEED_CLASSES = (orgId: string): Partial<EzClass>[] => [
+  { id: 'ezc1', org_id: orgId, nom: 'CP-A', niveau: 'CP', enseignant: 'Mme. Karima Idrissi', horaire_debut: '08:30', horaire_fin: '12:30', jours: 'Lun–Ven', salle: 'Salle 1', capacite: 12 },
+  { id: 'ezc2', org_id: orgId, nom: 'CE1-B', niveau: 'CE1', enseignant: 'M. Tarik Benali', horaire_debut: '08:30', horaire_fin: '12:30', jours: 'Lun–Ven', salle: 'Salle 2', capacite: 12 },
+  { id: 'ezc3', org_id: orgId, nom: 'CE2-A', niveau: 'CE2', enseignant: 'Mme. Sanaa Bakkali', horaire_debut: '08:30', horaire_fin: '13:00', jours: 'Lun–Ven', salle: 'Salle 3', capacite: 12 },
+  { id: 'ezc4', org_id: orgId, nom: 'CM1-A', niveau: 'CM1', enseignant: 'M. Yassine Mourad', horaire_debut: '08:30', horaire_fin: '13:30', jours: 'Lun–Ven', salle: 'Salle 4', capacite: 12 },
+  { id: 'ezc5', org_id: orgId, nom: 'CM2-A', niveau: 'CM2', enseignant: 'Mme. Hind Zouari', horaire_debut: '08:30', horaire_fin: '14:00', jours: 'Lun–Ven', salle: 'Salle 5', capacite: 12 },
+];
+
+const SEED_STAFF = (orgId: string): Partial<EzStaff>[] => [
+  { id: 'ezs1', org_id: orgId, prenom: 'Karima', nom: 'Idrissi', role: 'Enseignante', matiere: 'Toutes matières (CP)', email: 'k.idrissi@educazen.com', telephone: '0661100001', date_embauche: '2024-09-01', statut: 'Actif' },
+  { id: 'ezs2', org_id: orgId, prenom: 'Tarik', nom: 'Benali', role: 'Enseignant', matiere: 'Toutes matières (CE1)', email: 't.benali@educazen.com', telephone: '0661100002', date_embauche: '2024-09-01', statut: 'Actif' },
+  { id: 'ezs3', org_id: orgId, prenom: 'Sanaa', nom: 'Bakkali', role: 'Enseignante', matiere: 'Toutes matières (CE2)', email: 's.bakkali@educazen.com', telephone: '0661100003', date_embauche: '2025-01-15', statut: 'Actif' },
+  { id: 'ezs4', org_id: orgId, prenom: 'Yassine', nom: 'Mourad', role: 'Enseignant', matiere: 'Mathématiques & Sciences', email: 'y.mourad@educazen.com', telephone: '0661100004', date_embauche: '2024-09-01', statut: 'Actif' },
+  { id: 'ezs5', org_id: orgId, prenom: 'Hind', nom: 'Zouari', role: 'Psychopédagogue', matiere: 'Accompagnement PAP', email: 'h.zouari@educazen.com', telephone: '0661100005', date_embauche: '2024-09-01', statut: 'Actif' },
+  { id: 'ezs6', org_id: orgId, prenom: 'Rim', nom: 'Kettani', role: 'Art-thérapeute', matiere: 'Art-thérapie', email: 'r.kettani@educazen.com', telephone: '0661100006', date_embauche: '2025-02-01', statut: 'Congé' },
+];
+
+const SEED_STUDENTS = (orgId: string): Partial<EzStudent>[] => [
+  { id: 'ez_e1', org_id: orgId, prenom: 'Yasmine', nom: 'Benhaddou', date_naissance: '2015-03-12', sexe: 'F', classe: 'CE2-A', profil: 'HPI', statut: 'Actif', date_inscription: '2025-09-01', montant_mensuel: 1200, parent1_relation: 'Mère', parent1_prenom: 'Fatima', parent1_nom: 'Benhaddou', parent1_email: 'parent@educazen.com', parent1_telephone: '0661234567', parent1_profession: 'Enseignante', parent2_relation: 'Père', parent2_prenom: 'Karim', parent2_nom: 'Benhaddou', parent2_email: 'karim.b@gmail.com', parent2_telephone: '0662234567', adresse: '12 Rue des Fleurs', ville: 'Agadir', besoins_speciaux: 'Élève à haut potentiel, stimulation intellectuelle recommandée', notes_medicales: 'Aucune allergie connue' },
+  { id: 'ez_e2', org_id: orgId, prenom: 'Amine', nom: 'Ouali', date_naissance: '2016-07-20', sexe: 'M', classe: 'CE1-B', profil: 'TDAH', statut: 'Actif', date_inscription: '2025-09-01', montant_mensuel: 1200, parent1_relation: 'Père', parent1_prenom: 'Karim', parent1_nom: 'Ouali', parent1_email: 'karim.ouali@gmail.com', parent1_telephone: '0662345678', parent1_profession: 'Ingénieur', parent2_relation: 'Mère', parent2_prenom: 'Nadia', parent2_nom: 'Ouali', parent2_email: '', parent2_telephone: '0663345678', adresse: '5 Avenue Mohammed V', ville: 'Agadir', besoins_speciaux: 'TDAH — suivi PAP actif, séances ortho 2x/semaine', notes_medicales: 'Traitement Ritalin 10mg le matin' },
+  { id: 'ez_e3', org_id: orgId, prenom: 'Inès', nom: 'Sabri', date_naissance: '2014-11-05', sexe: 'F', classe: 'CM1-A', profil: 'DYS', statut: 'Actif', date_inscription: '2025-09-01', montant_mensuel: 1400, parent1_relation: 'Mère', parent1_prenom: 'Nadia', parent1_nom: 'Sabri', parent1_email: 'nadia.sabri@gmail.com', parent1_telephone: '0663456789', parent1_profession: 'Médecin', parent2_relation: 'Père', parent2_prenom: 'Hicham', parent2_nom: 'Sabri', parent2_email: '', parent2_telephone: '', adresse: '78 Boulevard Hassan II', ville: 'Agadir', besoins_speciaux: 'Dyslexie — supports adaptés nécessaires', notes_medicales: '' },
+  { id: 'ez_e4', org_id: orgId, prenom: 'Omar', nom: 'Tazi', date_naissance: '2017-04-18', sexe: 'M', classe: 'CP-A', profil: 'Standard', statut: 'Actif', date_inscription: '2025-09-01', montant_mensuel: 1100, parent1_relation: 'Père', parent1_prenom: 'Hassan', parent1_nom: 'Tazi', parent1_email: 'hassan.tazi@gmail.com', parent1_telephone: '0664567890', parent1_profession: 'Commerçant', parent2_relation: 'Mère', parent2_prenom: 'Samira', parent2_nom: 'Tazi', parent2_email: '', parent2_telephone: '0665567890', adresse: '3 Rue Oued Souss', ville: 'Agadir', besoins_speciaux: '', notes_medicales: '' },
+  { id: 'ez_e5', org_id: orgId, prenom: 'Salma', nom: 'Cherkaoui', date_naissance: '2013-09-22', sexe: 'F', classe: 'CM2-A', profil: 'TSA', statut: 'Actif', date_inscription: '2025-09-01', montant_mensuel: 1500, parent1_relation: 'Mère', parent1_prenom: 'Aïcha', parent1_nom: 'Cherkaoui', parent1_email: 'aicha.cherkaoui@gmail.com', parent1_telephone: '0665678901', parent1_profession: 'Juriste', parent2_relation: 'Père', parent2_prenom: 'Rachid', parent2_nom: 'Cherkaoui', parent2_email: '', parent2_telephone: '0666678901', adresse: '22 Résidence Al Amal', ville: 'Agadir', besoins_speciaux: 'TSA — environnement structuré, routines claires', notes_medicales: 'Suivi neuropsy mensuel' },
+  { id: 'ez_e6', org_id: orgId, prenom: 'Mehdi', nom: 'Bennani', date_naissance: '2016-02-14', sexe: 'M', classe: 'CE1-B', profil: 'Standard', statut: 'Actif', date_inscription: '2025-10-01', montant_mensuel: 1200, parent1_relation: 'Père', parent1_prenom: 'Said', parent1_nom: 'Bennani', parent1_email: 'said.bennani@gmail.com', parent1_telephone: '0666789012', parent1_profession: 'Architecte', parent2_relation: 'Mère', parent2_prenom: 'Lalla', parent2_nom: 'Bennani', parent2_email: '', parent2_telephone: '', adresse: '9 Rue Taroudant', ville: 'Agadir', besoins_speciaux: '', notes_medicales: '' },
+  { id: 'ez_e7', org_id: orgId, prenom: 'Lina', nom: 'Alaoui', date_naissance: '2015-06-30', sexe: 'F', classe: 'CE2-A', profil: 'HPI', statut: 'Actif', date_inscription: '2025-09-01', montant_mensuel: 1200, parent1_relation: 'Mère', parent1_prenom: 'Zineb', parent1_nom: 'Alaoui', parent1_email: 'zineb.alaoui@gmail.com', parent1_telephone: '0667890123', parent1_profession: 'Pharmacienne', parent2_relation: 'Père', parent2_prenom: 'Mehdi', parent2_nom: 'Alaoui', parent2_email: '', parent2_telephone: '', adresse: '14 Cité Founty', ville: 'Agadir', besoins_speciaux: 'HPI — projets enrichissement', notes_medicales: '' },
+  { id: 'ez_e8', org_id: orgId, prenom: 'Rayan', nom: 'Fassi', date_naissance: '2014-08-10', sexe: 'M', classe: 'CM1-A', profil: 'TDAH', statut: 'Parti', date_inscription: '2026-01-15', montant_mensuel: 1400, parent1_relation: 'Père', parent1_prenom: 'Youssef', parent1_nom: 'Fassi', parent1_email: 'youssef.fassi@gmail.com', parent1_telephone: '0668901234', parent1_profession: 'Comptable', parent2_relation: 'Mère', parent2_prenom: 'Safia', parent2_nom: 'Fassi', parent2_email: '', parent2_telephone: '', adresse: '6 Hay Dakhla', ville: 'Agadir', besoins_speciaux: 'TDAH', notes_medicales: '' },
+  { id: 'ez_e9', org_id: orgId, prenom: 'Douaa', nom: 'Berrada', date_naissance: '2017-12-01', sexe: 'F', classe: 'CP-A', profil: 'Standard', statut: 'Actif', date_inscription: '2025-09-01', montant_mensuel: 1100, parent1_relation: 'Mère', parent1_prenom: 'Meriem', parent1_nom: 'Berrada', parent1_email: 'meriem.berrada@gmail.com', parent1_telephone: '0669012345', parent1_profession: 'Infirmière', parent2_relation: 'Père', parent2_prenom: 'Brahim', parent2_nom: 'Berrada', parent2_email: '', parent2_telephone: '', adresse: '1 Hay Essalam', ville: 'Agadir', besoins_speciaux: '', notes_medicales: '' },
+  { id: 'ez_e10', org_id: orgId, prenom: 'Adam', nom: 'Lahlou', date_naissance: '2013-05-25', sexe: 'M', classe: 'CM2-A', profil: 'DYS', statut: 'Actif', date_inscription: '2025-09-01', montant_mensuel: 1500, parent1_relation: 'Père', parent1_prenom: 'Rachid', parent1_nom: 'Lahlou', parent1_email: 'rachid.lahlou@gmail.com', parent1_telephone: '0660123456', parent1_profession: 'Enseignant', parent2_relation: 'Mère', parent2_prenom: 'Fatima', parent2_nom: 'Lahlou', parent2_email: '', parent2_telephone: '', adresse: '33 Boulevard Abderrahim Bouabid', ville: 'Agadir', besoins_speciaux: 'Dyslexie et dysorthographie', notes_medicales: '' },
+];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 interface EducazenDashboardProps {
   role: 'admin' | 'parent';
   userEmail?: string;
+  orgId: string;
+  onNotify: (orgId: string, title: string, message: string, type?: string) => void;
 }
 
-export function EducazenDashboard({ role, userEmail }: EducazenDashboardProps) {
+export function EducazenDashboard({ role, userEmail, orgId, onNotify }: EducazenDashboardProps) {
   const [tab, setTab] = useState<EzTab>('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<EzStudent[]>([]);
+  const [classes, setClasses] = useState<EzClass[]>([]);
+  const [attendance, setAttendance] = useState<EzAttendance[]>([]);
+  const [payments, setPayments] = useState<EzPayment[]>([]);
+  const [assignments, setAssignments] = useState<EzAssignment[]>([]);
+  const [grades, setGrades] = useState<EzGrade[]>([]);
+  const [staff, setStaff] = useState<EzStaff[]>([]);
+
+  // UI state
   const [search, setSearch] = useState('');
   const [filterClasse, setFilterClasse] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
   const [filterMois, setFilterMois] = useState('Avril 2026');
-  const [showAddEleve, setShowAddEleve] = useState(false);
-  const [editingEleve, setEditingEleve] = useState<Eleve | null>(null);
-  const [eleves, setEleves] = useState<Eleve[]>(MOCK_ELEVES);
-  const [presences, setPresences] = useState<Presence[]>(MOCK_PRESENCES);
-  const [paiements, setPaiements] = useState<Paiement[]>(MOCK_PAIEMENTS);
-  const [personnel, setPersonnel] = useState<Personnel[]>(MOCK_PERSONNEL);
-  const [showAddPresence, setShowAddPresence] = useState(false);
-  const [selectedDate, setSelectedDate] = useState('2026-04-17');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [showParent2, setShowParent2] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<EzStudent | null>(null);
+  const [studentForm, setStudentForm] = useState<Partial<EzStudent>>(initStudent(orgId));
+  const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
-  // Parent view — find the student linked to this parent email
-  const myChild = useMemo(() =>
-    userEmail ? eleves.find(e => e.emailParent === userEmail) : null
-  , [eleves, userEmail]);
+  // ── Fetch ──
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    const [s, c, a, p, asn, g, st] = await Promise.all([
+      supabase.from('ez_students').select('*').eq('org_id', orgId),
+      supabase.from('ez_classes').select('*').eq('org_id', orgId),
+      supabase.from('ez_attendance').select('*').eq('org_id', orgId),
+      supabase.from('ez_payments').select('*').eq('org_id', orgId),
+      supabase.from('ez_assignments').select('*').eq('org_id', orgId),
+      supabase.from('ez_grades').select('*').eq('org_id', orgId),
+      supabase.from('ez_staff').select('*').eq('org_id', orgId),
+    ]);
+    if (s.data) setStudents(s.data as EzStudent[]);
+    if (c.data) setClasses(c.data as EzClass[]);
+    if (a.data) setAttendance(a.data as EzAttendance[]);
+    if (p.data) setPayments(p.data as EzPayment[]);
+    if (asn.data) setAssignments(asn.data as EzAssignment[]);
+    if (g.data) setGrades(g.data as EzGrade[]);
+    if (st.data) setStaff(st.data as EzStaff[]);
+    setLoading(false);
+  }, [orgId]);
 
-  // ── Computed stats ──
-  const activeEleves = eleves.filter(e => e.statut === 'Actif');
-  const partiEleves = eleves.filter(e => e.statut === 'Parti');
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const paiementsMois = paiements.filter(p => p.mois === filterMois);
-  const totalPercu = paiementsMois.filter(p => p.statut === 'Payé').reduce((s, p) => s + p.montant, 0);
-  const totalAttendu = activeEleves.reduce((s, e) => s + e.montantMensuel, 0);
-  const nonPayeurs = paiementsMois.filter(p => p.statut === 'Non payé');
+  // ── Seed ──
+  const handleSeedData = async () => {
+    setSeeding(true);
+    try {
+      const cls = SEED_CLASSES(orgId);
+      const stf = SEED_STAFF(orgId);
+      const stu = SEED_STUDENTS(orgId);
+      for (const c of cls) await supabase.from('ez_classes').upsert(c);
+      for (const s of stf) await supabase.from('ez_staff').upsert(s);
+      for (const s of stu) await supabase.from('ez_students').upsert(s);
+      // Seed payments for current month
+      for (const s of stu) {
+        const payId = `ezp_${s.id}_avr`;
+        const statuts = ['Payé', 'Non payé', 'Payé', 'Partiel', 'Payé', 'Non payé', 'Payé', 'Payé', 'Non payé', 'Payé'];
+        const idx = stu.indexOf(s);
+        await supabase.from('ez_payments').upsert({
+          id: payId, org_id: orgId, student_id: s.id,
+          mois: 'Avril 2026', montant: s.montant_mensuel,
+          statut: statuts[idx % statuts.length],
+          date_paiement: statuts[idx % statuts.length] === 'Payé' ? '2026-04-0' + ((idx % 5) + 1) : '',
+          mode_paiement: 'Espèces', notes: ''
+        });
+      }
+      // Seed assignments
+      const testAssignments = [
+        { id: 'eza1', org_id: orgId, titre: 'Rédaction – Mon Animal Préféré', matiere: 'Français', classe: 'CE2-A', date_limite: '2026-04-18', description: 'Écrire un texte de 10 lignes.' },
+        { id: 'eza2', org_id: orgId, titre: 'Tables de Multiplication', matiere: 'Mathématiques', classe: 'CE1-B', date_limite: '2026-04-17', description: 'Tables de 6, 7 et 8.' },
+        { id: 'eza3', org_id: orgId, titre: 'Le Petit Prince — Chapitres 1-5', matiere: 'Lecture', classe: 'CM1-A', date_limite: '2026-04-20', description: 'Lire et répondre aux questions.' },
+        { id: 'eza4', org_id: orgId, titre: 'Les Fractions', matiere: 'Mathématiques', classe: 'CM2-A', date_limite: '2026-04-19', description: 'Exercices page 45.' },
+      ];
+      for (const a of testAssignments) await supabase.from('ez_assignments').upsert(a);
+      await onNotify(orgId, 'EducaZen initialisé', 'Données de démonstration chargées avec succès.', 'success');
+      await fetchAll();
+    } catch (err) { console.error(err); }
+    setSeeding(false);
+  };
 
-  const presencesAujourdhui = presences.filter(p => p.date === selectedDate);
-  const tauxPresence = presencesAujourdhui.length > 0
-    ? Math.round(presencesAujourdhui.filter(p => p.statut === 'Présent').length / presencesAujourdhui.length * 100)
-    : 0;
+  // ── Computed ──
+  const activeStudents = useMemo(() => students.filter(s => s.statut === 'Actif'), [students]);
+  const classNames = useMemo(() => [...new Set(students.map(s => s.classe))].sort(), [students]);
+  const moisList = useMemo(() => {
+    const m = [...new Set(payments.map(p => p.mois))];
+    return m.length > 0 ? m : ['Avril 2026'];
+  }, [payments]);
 
-  // ── Filtered lists ──
-  const filteredEleves = useMemo(() =>
-    eleves.filter(e => {
+  const paysMois = useMemo(() => payments.filter(p => p.mois === filterMois), [payments, filterMois]);
+  const totalPercu = paysMois.filter(p => p.statut === 'Payé').reduce((s, p) => s + p.montant, 0);
+  const totalAttendu = activeStudents.reduce((s, e) => s + e.montant_mensuel, 0);
+  const nonPayers = useMemo(() => paysMois.filter(p => p.statut === 'Non payé'), [paysMois]);
+
+  const todayAttendance = useMemo(() => attendance.filter(a => a.date === selectedDate), [attendance, selectedDate]);
+  const presentCount = todayAttendance.filter(a => a.statut === 'Présent').length;
+  const tauxPresence = activeStudents.length > 0 ? Math.round(presentCount / activeStudents.length * 100) : 0;
+
+  const filteredStudents = useMemo(() =>
+    students.filter(s => {
       const q = search.toLowerCase();
-      const matchSearch = !q || e.prenom.toLowerCase().includes(q) || e.nom.toLowerCase().includes(q) || e.nomParent.toLowerCase().includes(q);
-      const matchClasse = !filterClasse || e.classe === filterClasse;
-      const matchStatut = !filterStatut || e.statut === filterStatut;
-      return matchSearch && matchClasse && matchStatut;
+      const match = !q || `${s.prenom} ${s.nom} ${s.parent1_prenom} ${s.parent1_nom}`.toLowerCase().includes(q);
+      return match && (!filterClasse || s.classe === filterClasse) && (!filterStatut || s.statut === filterStatut);
     }),
-    [eleves, search, filterClasse, filterStatut]
+    [students, search, filterClasse, filterStatut]
   );
 
-  const moisDisponibles = [...new Set(paiements.map(p => p.mois))];
-  const classes = [...new Set(eleves.map(e => e.classe))].sort();
-
-  // ── New student form ──
-  const [formEleve, setFormEleve] = useState<Partial<Eleve>>({ profil: 'Standard', statut: 'Actif', montantMensuel: 1200 });
-
-  const handleSaveEleve = () => {
-    if (!formEleve.prenom || !formEleve.nom) return;
-    if (editingEleve) {
-      setEleves(prev => prev.map(e => e.id === editingEleve.id ? { ...e, ...formEleve } as Eleve : e));
-    } else {
-      const newEleve: Eleve = {
-        id: `e${Date.now()}`,
-        prenom: formEleve.prenom!,
-        nom: formEleve.nom!,
-        age: formEleve.age || 8,
-        classe: formEleve.classe || 'CP-A',
-        profil: (formEleve.profil as Profil) || 'Standard',
-        nomParent: formEleve.nomParent || '',
-        emailParent: formEleve.emailParent || '',
-        telephone: formEleve.telephone || '',
-        dateInscription: new Date().toISOString().slice(0, 10),
-        statut: 'Actif',
-        montantMensuel: formEleve.montantMensuel || 1200,
-      };
-      setEleves(prev => [...prev, newEleve]);
-    }
-    setShowAddEleve(false);
-    setEditingEleve(null);
-    setFormEleve({ profil: 'Standard', statut: 'Actif', montantMensuel: 1200 });
-  };
-
-  const handleDeleteEleve = (id: string) => {
-    if (confirm('Supprimer cet élève ?')) setEleves(prev => prev.filter(e => e.id !== id));
-  };
-
-  const handleMarkPresence = (eleveId: string, statut: StatutPresence) => {
-    const existing = presences.find(p => p.eleveId === eleveId && p.date === selectedDate);
-    const eleve = eleves.find(e => e.id === eleveId);
+  // ── Attendance actions ──
+  const markAttendance = async (studentId: string, statut: StatutPresence) => {
+    const existing = attendance.find(a => a.student_id === studentId && a.date === selectedDate);
+    const student = students.find(s => s.id === studentId);
     if (existing) {
-      setPresences(prev => prev.map(p => p.id === existing.id ? { ...p, statut } : p));
+      await supabase.from('ez_attendance').update({ statut }).eq('id', existing.id);
+      setAttendance(prev => prev.map(a => a.id === existing.id ? { ...a, statut } : a));
     } else {
-      setPresences(prev => [...prev, {
-        id: `p${Date.now()}`,
-        eleveId,
-        date: selectedDate,
-        statut,
-        classe: eleve?.classe || '',
-      }]);
+      const id = `eza_${studentId}_${selectedDate}`;
+      const rec: EzAttendance = { id, org_id: orgId, student_id: studentId, date: selectedDate, statut, note: '' };
+      await supabase.from('ez_attendance').upsert(rec);
+      setAttendance(prev => [...prev, rec]);
+    }
+    if (statut === 'Absent' && student) {
+      await onNotify(orgId, 'Absence signalée', `${student.prenom} ${student.nom} absent(e) le ${selectedDate}.`, 'warning');
     }
   };
 
-  const handleTogglePaiement = (id: string) => {
-    setPaiements(prev => prev.map(p =>
-      p.id === id ? { ...p, statut: p.statut === 'Payé' ? 'Non payé' : 'Payé', datePaiement: p.statut !== 'Payé' ? new Date().toISOString().slice(0, 10) : undefined } : p
-    ));
+  // ── Payment actions ──
+  const togglePayment = async (studentId: string) => {
+    const pay = paysMois.find(p => p.student_id === studentId);
+    const student = students.find(s => s.id === studentId);
+    if (pay) {
+      const newStatut: StatutPaiement = pay.statut === 'Payé' ? 'Non payé' : 'Payé';
+      const newDate = newStatut === 'Payé' ? new Date().toISOString().slice(0, 10) : '';
+      await supabase.from('ez_payments').update({ statut: newStatut, date_paiement: newDate }).eq('id', pay.id);
+      setPayments(prev => prev.map(p => p.id === pay.id ? { ...p, statut: newStatut, date_paiement: newDate } : p));
+      if (newStatut === 'Payé' && student)
+        await onNotify(orgId, 'Paiement reçu', `Paiement de ${student.prenom} ${student.nom} enregistré pour ${filterMois}.`, 'success');
+    } else if (student) {
+      const id = `ezp_${studentId}_${filterMois.replace(' ', '_')}`;
+      const rec: EzPayment = { id, org_id: orgId, student_id: studentId, mois: filterMois, montant: student.montant_mensuel, statut: 'Payé', date_paiement: new Date().toISOString().slice(0, 10), mode_paiement: 'Espèces', notes: '' };
+      await supabase.from('ez_payments').upsert(rec);
+      setPayments(prev => [...prev, rec]);
+      await onNotify(orgId, 'Paiement reçu', `Paiement de ${student.prenom} ${student.nom} enregistré pour ${filterMois}.`, 'success');
+    }
   };
 
-  // ─── PARENT VIEW ───────────────────────────────────────────────────────────
+  // ── Student CRUD ──
+  const openAddStudent = () => {
+    setEditingStudent(null);
+    setStudentForm(initStudent(orgId));
+    setShowParent2(false);
+    setShowStudentModal(true);
+  };
+
+  const openEditStudent = (s: EzStudent) => {
+    setEditingStudent(s);
+    setStudentForm({ ...s });
+    setShowParent2(!!s.parent2_prenom);
+    setShowStudentModal(true);
+  };
+
+  const sf = (key: keyof EzStudent, val: any) =>
+    setStudentForm(prev => ({ ...prev, [key]: val }));
+
+  const handleSaveStudent = async () => {
+    if (!studentForm.prenom || !studentForm.nom) return;
+    setSaving(true);
+    const data = { ...initStudent(orgId), ...studentForm, org_id: orgId };
+    if (editingStudent) {
+      await supabase.from('ez_students').update(data).eq('id', editingStudent.id);
+      setStudents(prev => prev.map(s => s.id === editingStudent.id ? { ...s, ...data } as EzStudent : s));
+    } else {
+      const id = `ez_${Date.now()}`;
+      const rec = { ...data, id } as EzStudent;
+      await supabase.from('ez_students').insert(rec);
+      setStudents(prev => [...prev, rec]);
+      await onNotify(orgId, 'Nouvel élève inscrit', `${data.prenom} ${data.nom} a été inscrit(e).`, 'success');
+    }
+    setSaving(false);
+    setShowStudentModal(false);
+  };
+
+  const handleDeleteStudent = async (id: string) => {
+    const s = students.find(e => e.id === id);
+    if (!confirm(`Supprimer ${s?.prenom} ${s?.nom} ?`)) return;
+    await supabase.from('ez_students').delete().eq('id', id);
+    setStudents(prev => prev.filter(e => e.id !== id));
+  };
+
+  // ── Parent view ──
+  const myChild = useMemo(() => userEmail ? students.find(s => s.parent1_email === userEmail || s.parent2_email === userEmail) : null, [students, userEmail]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin mx-auto mb-3" style={{ borderColor: EZ_ACCENT, borderTopColor: 'transparent' }} />
+          <p className="text-sm text-gray-400" style={{ fontFamily: 'Quicksand, sans-serif' }}>Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══ PARENT VIEW ═══════════════════════════════════════════════════════════
   if (role === 'parent') {
-    const child = myChild;
-    const childPaiements = child ? paiements.filter(p => p.eleveId === child.id) : [];
-    const childPresences = child ? presences.filter(p => p.eleveId === child.id) : [];
-    const childNotes = child ? MOCK_NOTES.filter(n => n.eleveId === child.id) : [];
+    const childPays = myChild ? payments.filter(p => p.student_id === myChild.id) : [];
+    const childAtt = myChild ? attendance.filter(a => a.student_id === myChild.id).slice().reverse() : [];
+    const childGrades = myChild ? grades.filter(g => g.student_id === myChild.id) : [];
 
     return (
-      <div className="space-y-6 max-w-3xl mx-auto" style={{ fontFamily: 'Quicksand, sans-serif' }}>
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <img src="/educazen.png" alt="EducazenKids" className="h-10 w-auto" onError={(e) => (e.currentTarget.style.display = 'none')} />
+      <div className="max-w-2xl mx-auto space-y-5 pb-8" style={{ fontFamily: 'Quicksand, sans-serif' }}>
+        <div className="flex items-center gap-3">
+          <img src="/educazen.png" alt="EducazenKids" className="h-10 w-auto" onError={e => (e.currentTarget.style.display = 'none')} />
           <div>
-            <h1 className="text-2xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: '#C2185B' }}>
-              Espace Parent
-            </h1>
-            <p className="text-sm text-gray-500">
-              {child ? `${child.prenom} ${child.nom} — ${child.classe}` : 'Bienvenue sur votre espace'}
-            </p>
+            <h1 className="text-2xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: EZ_ACCENT }}>Espace Parent</h1>
+            <p className="text-xs text-gray-400">Centre EducazenKids · Agadir</p>
           </div>
         </div>
-
-        {!child ? (
-          <div className="bg-white rounded-2xl p-8 text-center text-gray-400 border border-gray-100">
+        {!myChild ? (
+          <div className="bg-white rounded-2xl p-8 text-center border border-gray-100 shadow-sm">
             <AlertCircle size={40} className="mx-auto mb-3 text-gray-300" />
-            <p>Aucun enfant associé à ce compte. Contactez l'administration.</p>
+            <p className="text-gray-500">Aucun enfant associé à ce compte.<br /><span className="text-xs">Contactez l'administration.</span></p>
           </div>
         ) : (
           <>
-            {/* Child status */}
-            {child.statut === 'Parti' && (
-              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center gap-3 text-rose-700">
-                <AlertCircle size={20} />
-                <span className="font-semibold">Votre enfant a quitté le centre EducazenKids.</span>
+            {myChild.statut === 'Parti' && (
+              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center gap-3 text-rose-700 text-sm font-semibold">
+                <AlertCircle size={18} /><span>Votre enfant a quitté le centre EducazenKids.</span>
               </div>
             )}
-
-            {/* Child card */}
-            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-extrabold bg-[#FFF0F5] text-[#C2185B]" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                  {getInitials(child.prenom, child.nom)}
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-[#FFF0F5] text-[#C2185B] flex items-center justify-center text-xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif' }}>
+                {initials(myChild.prenom, myChild.nom)}
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-extrabold" style={{ fontFamily: 'Nunito, sans-serif' }}>{myChild.prenom} {myChild.nom}</h2>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{myChild.classe}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${profilColors[myChild.profil]}`}>{myChild.profil}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${myChild.statut === 'Actif' ? 'bg-teal-50 text-teal-700' : 'bg-rose-50 text-rose-700'}`}>{myChild.statut}</span>
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-lg font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                    {child.prenom} {child.nom}
-                  </h2>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{child.classe}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${profilColor[child.profil]}`}>{child.profil}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${child.statut === 'Actif' ? 'bg-teal-50 text-teal-700' : 'bg-rose-100 text-rose-700'}`}>{child.statut}</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-400">Mensualité</p>
-                  <p className="text-lg font-extrabold text-[#C2185B]" style={{ fontFamily: 'Nunito, sans-serif' }}>{child.montantMensuel} MAD</p>
-                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Mensualité</p>
+                <p className="text-xl font-extrabold" style={{ color: EZ_ACCENT, fontFamily: 'Nunito, sans-serif' }}>{myChild.montant_mensuel} MAD</p>
               </div>
             </div>
-
-            {/* Payments */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-gray-50 flex items-center gap-2">
-                <CreditCard size={18} className="text-[#C2185B]" />
-                <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>Historique des Paiements</h3>
-              </div>
-              {childPaiements.length === 0 ? (
-                <p className="p-6 text-center text-gray-400 text-sm">Aucun paiement enregistré.</p>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {childPaiements.map(p => (
-                    <div key={p.id} className="flex items-center justify-between px-5 py-3">
-                      <div>
-                        <p className="font-semibold text-gray-700">{p.mois}</p>
-                        {p.datePaiement && <p className="text-xs text-gray-400">Payé le {p.datePaiement}</p>}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-gray-700">{p.montant} MAD</span>
-                        <span className={`text-xs px-2 py-1 rounded-full font-semibold ${paiementBadge[p.statut]}`}>{p.statut}</span>
-                      </div>
-                    </div>
-                  ))}
+            {[
+              { title: 'Paiements', icon: CreditCard, color: EZ_VIOLET, items: childPays.map(p => ({ left: p.mois, sub: p.date_paiement ? `Payé le ${p.date_paiement}` : '', right: `${p.montant} MAD`, badge: p.statut, badgeStyle: payStyle[p.statut] })) },
+              { title: 'Présences', icon: CheckSquare, color: EZ_TEAL, items: childAtt.slice(0, 10).map(a => ({ left: a.date, sub: '', right: '', badge: a.statut, badgeStyle: presenceStyle[a.statut] })) },
+              { title: 'Notes', icon: GraduationCap, color: EZ_GOLD, items: childGrades.map(g => { const asn = assignments.find(a => a.id === g.assignment_id); return { left: asn?.titre || '—', sub: `${asn?.matiere || ''} · ${g.commentaire}`, right: `${g.note}/20`, badge: '', badgeStyle: '' }; }) },
+            ].map(({ title, icon: Icon, color, items }) => (
+              <div key={title} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-gray-50 flex items-center gap-2">
+                  <Icon size={16} style={{ color }} /><h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>{title}</h3>
                 </div>
-              )}
-            </div>
-
-            {/* Attendance */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-gray-50 flex items-center gap-2">
-                <CheckSquare size={18} className="text-[#00897B]" />
-                <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>Présences Récentes</h3>
-              </div>
-              {childPresences.length === 0 ? (
-                <p className="p-6 text-center text-gray-400 text-sm">Aucune présence enregistrée.</p>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {childPresences.slice().reverse().map(p => (
-                    <div key={p.id} className="flex items-center justify-between px-5 py-3">
-                      <p className="font-medium text-gray-700">{p.date}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full font-semibold ${presenceBadge[p.statut]}`}>{p.statut}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Notes */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-gray-50 flex items-center gap-2">
-                <Star size={18} className="text-[#F9A825]" />
-                <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>Notes & Évaluations</h3>
-              </div>
-              {childNotes.length === 0 ? (
-                <p className="p-6 text-center text-gray-400 text-sm">Aucune note enregistrée.</p>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {childNotes.map(n => {
-                    const devoir = MOCK_DEVOIRS.find(d => d.id === n.devoirId);
-                    return (
-                      <div key={n.id} className="flex items-center justify-between px-5 py-3">
-                        <div>
-                          <p className="font-semibold text-gray-700">{devoir?.titre}</p>
-                          <p className="text-xs text-gray-400">{devoir?.matiere} · {n.commentaire}</p>
+                {items.length === 0 ? <p className="p-5 text-center text-xs text-gray-400">Aucun enregistrement.</p> : (
+                  <div className="divide-y divide-gray-50">
+                    {items.map((it, i) => (
+                      <div key={i} className="flex items-center justify-between px-4 py-3">
+                        <div><p className="text-sm font-semibold text-gray-700">{it.left}</p>{it.sub && <p className="text-xs text-gray-400 italic">{it.sub}</p>}</div>
+                        <div className="flex items-center gap-2">
+                          {it.right && <span className="font-bold text-gray-700 text-sm">{it.right}</span>}
+                          {it.badge && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${it.badgeStyle}`}>{it.badge}</span>}
                         </div>
-                        <span className={`text-lg font-extrabold ${n.note >= 16 ? 'text-[#00897B]' : n.note >= 12 ? 'text-[#F9A825]' : 'text-[#C2185B]'}`} style={{ fontFamily: 'Nunito, sans-serif' }}>
-                          {n.note}/20
-                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </>
         )}
       </div>
     );
   }
 
-  // ─── ADMIN VIEW ────────────────────────────────────────────────────────────
-  return (
-    <div className="space-y-5" style={{ fontFamily: 'Quicksand, sans-serif' }}>
+  // ═══ ADMIN VIEW ═══════════════════════════════════════════════════════════
 
+  const TABS: { id: EzTab; label: string; icon: any; count?: number }[] = [
+    { id: 'dashboard', label: "Vue d'ensemble", icon: LayoutDashboard },
+    { id: 'eleves', label: 'Élèves', icon: Users, count: activeStudents.length },
+    { id: 'classes', label: 'Classes', icon: GraduationCap },
+    { id: 'presences', label: 'Présences', icon: CheckSquare, count: todayAttendance.filter(a => a.statut === 'Absent').length },
+    { id: 'paiements', label: 'Paiements', icon: CreditCard, count: nonPayers.length },
+    { id: 'devoirs', label: 'Devoirs & Notes', icon: BookMarked },
+    { id: 'personnel', label: 'Personnel', icon: UserCog },
+  ];
+
+  return (
+    <div className="space-y-4 pb-8" style={{ fontFamily: 'Quicksand, sans-serif' }}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <img src="/educazen.png" alt="EducazenKids" className="h-10 w-auto" onError={(e) => (e.currentTarget.style.display = 'none')} />
+          <img src="/educazen.png" alt="EducazenKids" className="h-10 w-auto" onError={e => (e.currentTarget.style.display = 'none')} />
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: '#2D2D3A' }}>
-              Tableau de Bord <span style={{ color: '#C2185B' }}>EducazenKids</span>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>
+              Tableau de Bord <span style={{ color: EZ_ACCENT }}>EducazenKids</span>
             </h1>
-            <p className="text-xs text-gray-400" style={{ fontFamily: 'Cormorant Garamond, serif', letterSpacing: '0.1em' }}>
-              Centre Éducatif & Psychosocial · Agadir
-            </p>
+            <p className="text-[11px] text-gray-400" style={{ fontFamily: 'Cormorant Garamond, serif', letterSpacing: '0.1em' }}>Centre Éducatif & Psychosocial · Agadir, Maroc</p>
           </div>
         </div>
-        <div className="text-xs text-gray-400 font-medium">
-          {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        <div className="flex items-center gap-2">
+          <button onClick={fetchAll} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-gray-400">
+            <RefreshCw size={15} />
+          </button>
+          {students.length === 0 && (
+            <button onClick={handleSeedData} disabled={seeding}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-white text-xs font-bold transition-opacity hover:opacity-90 disabled:opacity-60"
+              style={{ backgroundColor: EZ_VIOLET, fontFamily: 'Nunito, sans-serif' }}>
+              <Database size={13} />{seeding ? 'Chargement...' : 'Initialiser les données'}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tabs */}
       <div className="bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 flex gap-1 overflow-x-auto">
-        <EzTabBtn label="Vue d'ensemble" icon={LayoutDashboard} active={tab === 'dashboard'} onClick={() => setTab('dashboard')} />
-        <EzTabBtn label="Élèves" icon={Users} active={tab === 'eleves'} onClick={() => setTab('eleves')} />
-        <EzTabBtn label="Classes" icon={GraduationCap} active={tab === 'classes'} onClick={() => setTab('classes')} />
-        <EzTabBtn label="Présences" icon={CheckSquare} active={tab === 'presences'} onClick={() => setTab('presences')} />
-        <EzTabBtn label="Paiements" icon={CreditCard} active={tab === 'paiements'} onClick={() => setTab('paiements')} />
-        <EzTabBtn label="Devoirs & Notes" icon={BookMarked} active={tab === 'devoirs'} onClick={() => setTab('devoirs')} />
-        <EzTabBtn label="Personnel" icon={UserCog} active={tab === 'personnel'} onClick={() => setTab('personnel')} />
+        {TABS.map(t => (
+          <EzTabBtn key={t.id} label={t.label} icon={t.icon} active={tab === t.id} onClick={() => setTab(t.id as EzTab)} count={t.count} />
+        ))}
       </div>
 
-      {/* ─── DASHBOARD TAB ─── */}
+      {/* ── DASHBOARD ── */}
       {tab === 'dashboard' && (
-        <div className="space-y-5">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <EzStatCard label="Élèves Actifs" value={activeEleves.length} sub={`${partiEleves.length} parti(s)`} color="#C2185B" />
-            <EzStatCard label="Taux de Présence" value={`${tauxPresence}%`} sub={`${selectedDate}`} color="#00897B" />
-            <EzStatCard label="Recouvré (Avril)" value={`${totalPercu.toLocaleString()} MAD`} sub={`sur ${totalAttendu.toLocaleString()} MAD attendus`} color="#7B1FA2" />
-            <EzStatCard label="Personnel Actif" value={personnel.filter(s => s.statut === 'Actif').length} sub={`${personnel.filter(s => s.statut === 'Congé').length} en congé`} color="#F9A825" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <EzStatCard label="Élèves Actifs" value={activeStudents.length} sub={`${students.filter(s => s.statut === 'Parti').length} parti(s)`} color={EZ_ACCENT} icon={Users} />
+            <EzStatCard label="Présence Auj." value={`${tauxPresence}%`} sub={`${presentCount}/${activeStudents.length} élèves`} color={EZ_TEAL} icon={CheckSquare} />
+            <EzStatCard label={`Perçu ${filterMois.split(' ')[0]}`} value={`${totalPercu.toLocaleString()} MAD`} sub={`/${totalAttendu.toLocaleString()} attendus`} color={EZ_VIOLET} icon={CreditCard} />
+            <EzStatCard label="Personnel Actif" value={staff.filter(s => s.statut === 'Actif').length} sub={`${staff.filter(s => s.statut === 'Congé').length} en congé`} color={EZ_GOLD} icon={UserCog} />
           </div>
 
-          {/* Two column layout */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-            {/* Non-payers */}
+            {/* Unpaid */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-gray-50 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertCircle size={16} className="text-rose-500" />
-                  <h3 className="font-extrabold text-sm text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>Paiements en Attente</h3>
-                </div>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 font-bold">{nonPayeurs.length}</span>
+                <div className="flex items-center gap-2"><AlertCircle size={15} className="text-rose-500" /><h3 className="font-extrabold text-sm" style={{ fontFamily: 'Nunito, sans-serif' }}>Paiements en Attente</h3></div>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 font-bold">{nonPayers.length}</span>
               </div>
-              <div className="divide-y divide-gray-50">
-                {nonPayeurs.length === 0 ? (
-                  <p className="p-5 text-center text-gray-400 text-sm">Tous les paiements sont à jour ✓</p>
-                ) : nonPayeurs.map(p => {
-                  const eleve = eleves.find(e => e.id === p.eleveId);
-                  return eleve ? (
-                    <div key={p.id} className="flex items-center justify-between px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#FFF0F5] text-[#C2185B] flex items-center justify-center text-xs font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                          {getInitials(eleve.prenom, eleve.nom)}
+              {nonPayers.length === 0 ? <p className="p-5 text-center text-xs text-gray-400">Tous les paiements sont à jour ✓</p> : (
+                <>
+                  {nonPayers.map(p => {
+                    const s = students.find(e => e.student_id === p.student_id || e.id === p.student_id);
+                    if (!s) return null;
+                    return (
+                      <div key={p.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#FFF0F5] text-[#C2185B] flex items-center justify-center text-xs font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
+                          <div><p className="text-sm font-semibold text-gray-700">{s.prenom} {s.nom}</p><p className="text-xs text-gray-400">{s.classe}</p></div>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">{eleve.prenom} {eleve.nom}</p>
-                          <p className="text-xs text-gray-400">{eleve.classe}</p>
-                        </div>
+                        <div className="text-right"><p className="text-sm font-bold text-rose-600">{s.montant_mensuel} MAD</p></div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-rose-600">{eleve.montantMensuel} MAD</p>
-                        <span className="text-xs text-rose-400">Non payé</span>
-                      </div>
-                    </div>
-                  ) : null;
-                })}
-              </div>
-              {nonPayeurs.length > 0 && (
-                <div className="p-3 bg-rose-50/50 text-xs text-rose-600 font-semibold text-center">
-                  Total impayé : {nonPayeurs.reduce((s, p) => { const e = eleves.find(el => el.id === p.eleveId); return s + (e?.montantMensuel || 0); }, 0).toLocaleString()} MAD
-                </div>
+                    );
+                  })}
+                  <div className="p-3 bg-rose-50/50 text-xs text-rose-600 font-semibold text-center">
+                    Total impayé : {nonPayers.reduce((sum, p) => { const s = students.find(e => e.id === p.student_id); return sum + (s?.montant_mensuel || 0); }, 0).toLocaleString()} MAD
+                  </div>
+                </>
               )}
             </div>
 
-            {/* Recent absences */}
+            {/* Absences */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-gray-50 flex items-center gap-2">
-                <Clock size={16} className="text-[#7B1FA2]" />
-                <h3 className="font-extrabold text-sm text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>Absences Récentes</h3>
+                <Clock size={15} style={{ color: EZ_VIOLET }} /><h3 className="font-extrabold text-sm" style={{ fontFamily: 'Nunito, sans-serif' }}>Absences Récentes</h3>
               </div>
-              <div className="divide-y divide-gray-50">
-                {presences.filter(p => p.statut === 'Absent').slice(0, 6).map(p => {
-                  const eleve = eleves.find(e => e.id === p.eleveId);
-                  return eleve ? (
-                    <div key={p.id} className="flex items-center justify-between px-4 py-3">
+              {attendance.filter(a => a.statut === 'Absent').length === 0 ? <p className="p-5 text-center text-xs text-gray-400">Aucune absence enregistrée.</p> : (
+                attendance.filter(a => a.statut === 'Absent').slice(0, 6).map((a, i) => {
+                  const s = students.find(e => e.id === a.student_id);
+                  return s ? (
+                    <div key={a.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#F8F0FF] text-[#7B1FA2] flex items-center justify-center text-xs font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                          {getInitials(eleve.prenom, eleve.nom)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">{eleve.prenom} {eleve.nom}</p>
-                          <p className="text-xs text-gray-400">{p.classe}</p>
-                        </div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarBg[i % 4]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
+                        <div><p className="text-sm font-semibold text-gray-700">{s.prenom} {s.nom}</p><p className="text-xs text-gray-400">{s.classe}</p></div>
                       </div>
-                      <span className="text-xs text-gray-400">{p.date}</span>
+                      <span className="text-xs text-gray-400">{a.date}</span>
                     </div>
                   ) : null;
-                })}
-              </div>
+                })
+              )}
             </div>
           </div>
 
-          {/* Students who left */}
-          {partiEleves.length > 0 && (
+          {/* Departed */}
+          {students.filter(s => s.statut === 'Parti').length > 0 && (
             <div className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-amber-50 flex items-center gap-2">
-                <TrendingDown size={16} className="text-amber-600" />
-                <h3 className="font-extrabold text-sm text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>Élèves Ayant Quitté le Centre</h3>
+                <TrendingDown size={15} className="text-amber-600" /><h3 className="font-extrabold text-sm" style={{ fontFamily: 'Nunito, sans-serif' }}>Élèves Ayant Quitté le Centre</h3>
               </div>
-              <div className="divide-y divide-amber-50/50">
-                {partiEleves.map(e => (
-                  <div key={e.id} className="flex items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center text-xs font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                        {getInitials(e.prenom, e.nom)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700">{e.prenom} {e.nom}</p>
-                        <p className="text-xs text-gray-400">{e.classe} · {e.profil}</p>
-                      </div>
-                    </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-700 font-semibold">Parti</span>
+              {students.filter(s => s.statut === 'Parti').map((s, i) => (
+                <div key={s.id} className="flex items-center justify-between px-4 py-3 border-b border-amber-50/50 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center text-xs font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
+                    <div><p className="text-sm font-semibold">{s.prenom} {s.nom}</p><p className="text-xs text-gray-400">{s.classe} · {s.profil}</p></div>
                   </div>
-                ))}
-              </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-700 font-semibold">Parti</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
       )}
 
-      {/* ─── ELEVES TAB ─── */}
+      {/* ── ÉLÈVES ── */}
       {tab === 'eleves' && (
         <div className="space-y-4">
-          {/* Toolbar */}
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Rechercher un élève ou parent..."
-                className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-[#C2185B] bg-white"
-                style={{ fontFamily: 'Quicksand, sans-serif' }}
-              />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher élève ou parent..."
+                className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }} />
             </div>
             <select value={filterClasse} onChange={e => setFilterClasse(e.target.value)}
-              className="px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }}>
+              className="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }}>
               <option value="">Toutes les classes</option>
-              {classes.map(c => <option key={c}>{c}</option>)}
+              {classNames.map(c => <option key={c}>{c}</option>)}
             </select>
             <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)}
-              className="px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }}>
+              className="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }}>
               <option value="">Tous statuts</option>
-              <option>Actif</option>
-              <option>Parti</option>
+              <option>Actif</option><option>Parti</option><option>Suspendu</option>
             </select>
-            <button onClick={() => { setEditingEleve(null); setFormEleve({ profil: 'Standard', statut: 'Actif', montantMensuel: 1200 }); setShowAddEleve(true); }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-sm"
-              style={{ backgroundColor: '#C2185B', fontFamily: 'Nunito, sans-serif' }}>
-              <Plus size={16} /> Inscrire un élève
+            <button onClick={openAddStudent}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-bold shadow-sm whitespace-nowrap"
+              style={{ backgroundColor: EZ_ACCENT, fontFamily: 'Nunito, sans-serif' }}>
+              <Plus size={15} /> Inscrire un élève
             </button>
           </div>
 
-          {/* Students table */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={{ fontFamily: 'Quicksand, sans-serif', minWidth: '700px' }}>
+              <table className="w-full text-sm" style={{ fontFamily: 'Quicksand, sans-serif', minWidth: '680px' }}>
                 <thead>
-                  <tr className="bg-[#FFF0F5]/60">
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#C2185B] uppercase tracking-wider">Élève</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#C2185B] uppercase tracking-wider">Classe</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#C2185B] uppercase tracking-wider hidden sm:table-cell">Profil</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#C2185B] uppercase tracking-wider hidden md:table-cell">Parent</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#C2185B] uppercase tracking-wider">Mensualité</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#C2185B] uppercase tracking-wider">Statut</th>
-                    <th className="px-4 py-3"></th>
+                  <tr style={{ backgroundColor: '#FFF0F5' }}>
+                    {['Élève', 'Classe', 'Profil', 'Parent', 'Contact', 'Mensualité', 'Statut', ''].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: EZ_ACCENT }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {filteredEleves.map((eleve, i) => (
-                    <tr key={eleve.id} className="hover:bg-[#FFF0F5]/30 transition-colors">
+                  {filteredStudents.map((s, i) => (
+                    <tr key={s.id} className="hover:bg-[#FFF0F5]/30 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarColors[i % avatarColors.length]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>
-                            {getInitials(eleve.prenom, eleve.nom)}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-800">{eleve.prenom} {eleve.nom}</p>
-                            <p className="text-xs text-gray-400">{eleve.age} ans</p>
-                          </div>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarBg[i % 4]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
+                          <div><p className="font-semibold text-gray-800">{s.prenom} {s.nom}</p><p className="text-xs text-gray-400">{s.date_naissance}</p></div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-700">{eleve.classe}</td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${profilColor[eleve.profil]}`}>{eleve.profil}</span>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        <p className="text-sm text-gray-700">{eleve.nomParent}</p>
-                        <p className="text-xs text-gray-400">{eleve.telephone}</p>
-                      </td>
-                      <td className="px-4 py-3 font-bold" style={{ color: '#7B1FA2' }}>{eleve.montantMensuel} MAD</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${eleve.statut === 'Actif' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {eleve.statut}
-                        </span>
-                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-700">{s.classe}</td>
+                      <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${profilColors[s.profil]}`}>{s.profil}</span></td>
+                      <td className="px-4 py-3"><p className="text-sm text-gray-700">{s.parent1_prenom} {s.parent1_nom}</p><p className="text-xs text-gray-400">{s.parent1_relation}</p></td>
+                      <td className="px-4 py-3"><p className="text-xs text-gray-600 flex items-center gap-1"><Phone size={11} /> {s.parent1_telephone}</p><p className="text-xs text-gray-400 flex items-center gap-1"><Mail size={11} /> {s.parent1_email}</p></td>
+                      <td className="px-4 py-3 font-bold" style={{ color: EZ_VIOLET }}>{s.montant_mensuel} MAD</td>
+                      <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.statut === 'Actif' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}`}>{s.statut}</span></td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => { setEditingEleve(eleve); setFormEleve({ ...eleve }); setShowAddEleve(true); }}
-                            className="p-1.5 rounded-lg hover:bg-[#FFF0F5] text-[#C2185B] transition-colors">
-                            <Pencil size={14} />
-                          </button>
-                          <button onClick={() => handleDeleteEleve(eleve.id)}
-                            className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-400 transition-colors">
-                            <Trash2 size={14} />
-                          </button>
+                          <button onClick={() => openEditStudent(s)} className="p-1.5 rounded-lg hover:bg-[#FFF0F5] transition-colors" style={{ color: EZ_ACCENT }}><Pencil size={13} /></button>
+                          <button onClick={() => handleDeleteStudent(s.id)} className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-400 transition-colors"><Trash2 size={13} /></button>
                         </div>
                       </td>
                     </tr>
                   ))}
+                  {filteredStudents.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400 text-sm">Aucun élève trouvé.</td></tr>}
                 </tbody>
               </table>
             </div>
-            <div className="p-3 bg-gray-50/50 text-xs text-gray-400 text-center">
-              {filteredEleves.length} élève(s) affiché(s)
-            </div>
+            <div className="p-3 bg-gray-50/50 text-xs text-gray-400 text-center">{filteredStudents.length} élève(s) affiché(s) · {activeStudents.length} actif(s)</div>
           </div>
         </div>
       )}
 
-      {/* ─── CLASSES TAB ─── */}
+      {/* ── CLASSES ── */}
       {tab === 'classes' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {MOCK_CLASSES.map((cls, i) => {
-            const classEleves = eleves.filter(e => e.classe === cls.nom && e.statut === 'Actif');
+          {classes.map((cls, i) => {
+            const enrolled = students.filter(s => s.classe === cls.nom && s.statut === 'Actif');
+            const accent = accentList[i % accentList.length];
             return (
               <div key={cls.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="text-lg font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: '#2D2D3A' }}>{cls.nom}</h3>
-                    <p className="text-xs text-gray-400" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Niveau {cls.niveau}</p>
+                    <h3 className="text-lg font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>{cls.nom}</h3>
+                    <p className="text-xs text-gray-400">Niveau {cls.niveau}</p>
                   </div>
-                  <span className="text-2xl font-extrabold" style={{ color: ['#C2185B', '#7B1FA2', '#00897B', '#F9A825'][i % 4], fontFamily: 'Nunito, sans-serif' }}>
-                    {classEleves.length}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-3xl font-extrabold" style={{ color: accent, fontFamily: 'Nunito, sans-serif' }}>{enrolled.length}</span>
+                    <p className="text-[10px] text-gray-400">/ {cls.capacite}</p>
+                  </div>
                 </div>
                 <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap size={14} className="text-gray-400" />
-                    <span>{cls.enseignant}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock size={14} className="text-gray-400" />
-                    <span>{cls.horaire} · {cls.jours}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <BookOpen size={14} className="text-gray-400" />
-                    <span>Salle {cls.salle}</span>
-                  </div>
+                  <div className="flex items-center gap-2"><GraduationCap size={13} className="text-gray-400" /><span>{cls.enseignant}</span></div>
+                  <div className="flex items-center gap-2"><Clock size={13} className="text-gray-400" /><span>{cls.horaire_debut} – {cls.horaire_fin} · {cls.jours}</span></div>
+                  <div className="flex items-center gap-2"><Calendar size={13} className="text-gray-400" /><span>Salle : {cls.salle}</span></div>
                 </div>
-                {/* Enrolled students */}
-                {classEleves.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-50">
-                    <div className="flex -space-x-2">
-                      {classEleves.slice(0, 5).map((e, j) => (
-                        <div key={e.id} title={`${e.prenom} ${e.nom}`}
-                          className={`w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold ${avatarColors[j % avatarColors.length]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>
-                          {getInitials(e.prenom, e.nom)}
-                        </div>
-                      ))}
-                    </div>
+                {enrolled.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-50 flex -space-x-2">
+                    {enrolled.slice(0, 6).map((s, j) => (
+                      <div key={s.id} title={`${s.prenom} ${s.nom}`} className={`w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold ${avatarBg[j % 4]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>
+                        {initials(s.prenom, s.nom)}
+                      </div>
+                    ))}
+                    {enrolled.length > 6 && <div className="w-7 h-7 rounded-full border-2 border-white bg-gray-100 text-gray-500 flex items-center justify-center text-[9px] font-bold">+{enrolled.length - 6}</div>}
                   </div>
                 )}
               </div>
             );
           })}
+          {classes.length === 0 && <div className="col-span-3 text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">Aucune classe. Initialisez les données.</div>}
         </div>
       )}
 
-      {/* ─── PRESENCES TAB ─── */}
+      {/* ── PRÉSENCES ── */}
       {tab === 'presences' && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <label className="text-sm font-semibold text-gray-600">Date :</label>
               <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
-                className="px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-[#C2185B] bg-white"
-                style={{ fontFamily: 'Quicksand, sans-serif' }} />
+                className="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }} />
             </div>
-            <div className="flex gap-3 text-sm">
-              <span className="px-3 py-1 rounded-full bg-teal-50 text-teal-700 font-semibold">
-                {presences.filter(p => p.date === selectedDate && p.statut === 'Présent').length} Présents
-              </span>
-              <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-600 font-semibold">
-                {presences.filter(p => p.date === selectedDate && p.statut === 'Absent').length} Absents
-              </span>
-              <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 font-semibold">
-                {presences.filter(p => p.date === selectedDate && p.statut === 'Retard').length} Retards
-              </span>
+            <div className="flex gap-2 text-xs font-semibold flex-wrap">
+              <span className="px-3 py-1.5 rounded-full bg-teal-50 text-teal-700">{todayAttendance.filter(a => a.statut === 'Présent').length} Présents</span>
+              <span className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-600">{todayAttendance.filter(a => a.statut === 'Absent').length} Absents</span>
+              <span className="px-3 py-1.5 rounded-full bg-amber-50 text-amber-700">{todayAttendance.filter(a => a.statut === 'Retard').length} Retards</span>
             </div>
           </div>
-
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={{ fontFamily: 'Quicksand, sans-serif', minWidth: '500px' }}>
+              <table className="w-full text-sm" style={{ fontFamily: 'Quicksand, sans-serif', minWidth: '480px' }}>
                 <thead>
-                  <tr className="bg-[#E8F8F5]/60">
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#00897B] uppercase tracking-wider">Élève</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#00897B] uppercase tracking-wider">Classe</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#00897B] uppercase tracking-wider">Statut</th>
-                    <th className="px-4 py-3 text-xs font-bold text-[#00897B] uppercase tracking-wider text-center">Action</th>
+                  <tr style={{ backgroundColor: '#E8F8F5' }}>
+                    {['Élève', 'Classe', 'Profil', 'Statut', 'Marquer'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: EZ_TEAL }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {activeEleves.map((eleve, i) => {
-                    const p = presences.find(pr => pr.eleveId === eleve.id && pr.date === selectedDate);
+                  {activeStudents.map((s, i) => {
+                    const att = todayAttendance.find(a => a.student_id === s.id);
                     return (
-                      <tr key={eleve.id} className="hover:bg-[#E8F8F5]/20 transition-colors">
+                      <tr key={s.id} className="hover:bg-[#E8F8F5]/20 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarColors[i % avatarColors.length]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>
-                              {getInitials(eleve.prenom, eleve.nom)}
-                            </div>
-                            <span className="font-semibold text-gray-800">{eleve.prenom} {eleve.nom}</span>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarBg[i % 4]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
+                            <span className="font-semibold text-gray-800">{s.prenom} {s.nom}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-600">{eleve.classe}</td>
+                        <td className="px-4 py-3 text-gray-600">{s.classe}</td>
+                        <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${profilColors[s.profil]}`}>{s.profil}</span></td>
                         <td className="px-4 py-3">
-                          {p ? (
-                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${presenceBadge[p.statut]}`}>{p.statut}</span>
-                          ) : (
-                            <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-400">Non marqué</span>
-                          )}
+                          {att ? <span className={`text-xs px-2 py-1 rounded-full font-semibold ${presenceStyle[att.statut]}`}>{att.statut}</span>
+                            : <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-400">Non marqué</span>}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex justify-center gap-1">
-                            {(['Présent', 'Absent', 'Retard'] as StatutPresence[]).map(s => (
-                              <button key={s} onClick={() => handleMarkPresence(eleve.id, s)}
-                                className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${p?.statut === s ? presenceBadge[s] + ' ring-1 ring-current' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
-                                {s === 'Présent' ? '✓' : s === 'Absent' ? '✗' : '⏱'}
+                          <div className="flex gap-1">
+                            {(['Présent', 'Absent', 'Retard'] as StatutPresence[]).map(st => (
+                              <button key={st} onClick={() => markAttendance(s.id, st)}
+                                className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${att?.statut === st ? presenceStyle[st] + ' ring-1 ring-current' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
+                                {st === 'Présent' ? '✓' : st === 'Absent' ? '✗' : '⏱'}
                               </button>
                             ))}
                           </div>
@@ -852,88 +828,62 @@ export function EducazenDashboard({ role, userEmail }: EducazenDashboardProps) {
         </div>
       )}
 
-      {/* ─── PAIEMENTS TAB ─── */}
+      {/* ── PAIEMENTS ── */}
       {tab === 'paiements' && (
         <div className="space-y-4">
-          {/* Summary bar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-teal-50 rounded-2xl p-4 border border-teal-100">
-              <p className="text-xs font-bold text-teal-600 uppercase tracking-wider mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Total Perçu</p>
+              <p className="text-[10px] font-bold text-teal-600 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Total Perçu</p>
               <p className="text-2xl font-extrabold text-teal-700" style={{ fontFamily: 'Nunito, sans-serif' }}>{totalPercu.toLocaleString()} MAD</p>
             </div>
             <div className="bg-rose-50 rounded-2xl p-4 border border-rose-100">
-              <p className="text-xs font-bold text-rose-500 uppercase tracking-wider mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Reste à Collecter</p>
+              <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Reste à Collecter</p>
               <p className="text-2xl font-extrabold text-rose-600" style={{ fontFamily: 'Nunito, sans-serif' }}>{(totalAttendu - totalPercu).toLocaleString()} MAD</p>
             </div>
             <div className="bg-[#F8F0FF] rounded-2xl p-4 border border-violet-100">
-              <p className="text-xs font-bold text-violet-600 uppercase tracking-wider mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Taux de Recouvrement</p>
-              <p className="text-2xl font-extrabold text-violet-700" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                {totalAttendu > 0 ? Math.round(totalPercu / totalAttendu * 100) : 0}%
-              </p>
+              <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Taux de Recouvrement</p>
+              <p className="text-2xl font-extrabold text-violet-700" style={{ fontFamily: 'Nunito, sans-serif' }}>{totalAttendu > 0 ? Math.round(totalPercu / totalAttendu * 100) : 0}%</p>
             </div>
           </div>
-
-          {/* Month filter */}
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-gray-600">Mois :</label>
             <select value={filterMois} onChange={e => setFilterMois(e.target.value)}
-              className="px-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-[#C2185B] bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }}>
-              {moisDisponibles.map(m => <option key={m}>{m}</option>)}
+              className="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }}>
+              {moisList.map(m => <option key={m}>{m}</option>)}
             </select>
           </div>
-
-          {/* Payments table */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm" style={{ fontFamily: 'Quicksand, sans-serif', minWidth: '500px' }}>
+              <table className="w-full text-sm" style={{ fontFamily: 'Quicksand, sans-serif', minWidth: '580px' }}>
                 <thead>
-                  <tr className="bg-[#F8F0FF]/60">
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#7B1FA2] uppercase tracking-wider">Élève</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#7B1FA2] uppercase tracking-wider hidden sm:table-cell">Classe</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#7B1FA2] uppercase tracking-wider">Montant</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#7B1FA2] uppercase tracking-wider">Statut</th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-[#7B1FA2] uppercase tracking-wider hidden md:table-cell">Date</th>
-                    <th className="px-4 py-3"></th>
+                  <tr style={{ backgroundColor: '#F8F0FF' }}>
+                    {['Élève', 'Classe', 'Parent', 'Montant', 'Statut', 'Date', 'Action'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider" style={{ color: EZ_VIOLET }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {activeEleves.map((eleve, i) => {
-                    const pay = paiementsMois.find(p => p.eleveId === eleve.id);
+                  {activeStudents.map((s, i) => {
+                    const pay = paysMois.find(p => p.student_id === s.id);
                     const statut: StatutPaiement = pay?.statut || 'Non payé';
                     return (
-                      <tr key={eleve.id} className="hover:bg-[#F8F0FF]/20 transition-colors">
+                      <tr key={s.id} className="hover:bg-[#F8F0FF]/20 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarColors[i % avatarColors.length]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>
-                              {getInitials(eleve.prenom, eleve.nom)}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-800">{eleve.prenom} {eleve.nom}</p>
-                              <p className="text-xs text-gray-400">{eleve.nomParent}</p>
-                            </div>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarBg[i % 4]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
+                            <span className="font-semibold text-gray-800">{s.prenom} {s.nom}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{eleve.classe}</td>
-                        <td className="px-4 py-3 font-bold" style={{ color: '#7B1FA2' }}>{eleve.montantMensuel} MAD</td>
+                        <td className="px-4 py-3 text-gray-600">{s.classe}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{s.parent1_prenom} · {s.parent1_telephone}</td>
+                        <td className="px-4 py-3 font-bold" style={{ color: EZ_VIOLET }}>{s.montant_mensuel} MAD</td>
+                        <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-semibold ${payStyle[statut]}`}>{statut}</span></td>
+                        <td className="px-4 py-3 text-xs text-gray-400">{pay?.date_paiement || '—'}</td>
                         <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-1 rounded-full font-semibold ${paiementBadge[statut]}`}>{statut}</span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-400 text-xs hidden md:table-cell">{pay?.datePaiement || '—'}</td>
-                        <td className="px-4 py-3">
-                          {pay ? (
-                            <button onClick={() => handleTogglePaiement(pay.id)}
-                              className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${pay.statut === 'Payé' ? 'bg-rose-50 text-rose-500 hover:bg-rose-100' : 'bg-teal-50 text-teal-600 hover:bg-teal-100'}`}>
-                              {pay.statut === 'Payé' ? 'Annuler' : 'Marquer payé'}
-                            </button>
-                          ) : (
-                            <button onClick={() => {
-                              const newPay: Paiement = { id: `pay${Date.now()}`, eleveId: eleve.id, mois: filterMois, montant: eleve.montantMensuel, statut: 'Payé', datePaiement: new Date().toISOString().slice(0, 10) };
-                              setPaiements(prev => [...prev, newPay]);
-                            }}
-                              className="px-2 py-1 rounded-lg text-xs font-semibold bg-teal-50 text-teal-600 hover:bg-teal-100 transition-all">
-                              Marquer payé
-                            </button>
-                          )}
+                          <button onClick={() => togglePayment(s.id)}
+                            className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${pay?.statut === 'Payé' ? 'bg-rose-50 text-rose-500 hover:bg-rose-100' : 'bg-teal-50 text-teal-600 hover:bg-teal-100'}`}>
+                            {pay?.statut === 'Payé' ? 'Annuler' : '✓ Marquer payé'}
+                          </button>
                         </td>
                       </tr>
                     );
@@ -945,164 +895,188 @@ export function EducazenDashboard({ role, userEmail }: EducazenDashboardProps) {
         </div>
       )}
 
-      {/* ─── DEVOIRS & NOTES TAB ─── */}
+      {/* ── DEVOIRS & NOTES ── */}
       {tab === 'devoirs' && (
         <div className="space-y-4">
-          {MOCK_DEVOIRS.map((devoir, i) => {
-            const notesDevoir = MOCK_NOTES.filter(n => n.devoirId === devoir.id);
-            const moyenne = notesDevoir.length > 0
-              ? (notesDevoir.reduce((s, n) => s + n.note, 0) / notesDevoir.length).toFixed(1)
-              : '—';
-            const accentColors = ['#C2185B', '#7B1FA2', '#00897B', '#F9A825', '#C2185B'];
+          {assignments.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400">Aucun devoir. Initialisez les données.</div>
+          ) : assignments.map((asn, i) => {
+            const asnGrades = grades.filter(g => g.assignment_id === asn.id);
+            const moyenne = asnGrades.length > 0 ? (asnGrades.reduce((s, g) => s + Number(g.note), 0) / asnGrades.length).toFixed(1) : '—';
+            const accent = accentList[i % accentList.length];
             return (
-              <div key={devoir.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                  style={{ borderLeftWidth: 4, borderLeftColor: accentColors[i % accentColors.length], borderLeftStyle: 'solid' }}>
+              <div key={asn.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" style={{ borderLeftWidth: 4, borderLeftColor: accent, borderLeftStyle: 'solid' }}>
+                <div className="p-4 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>{devoir.titre}</h3>
-                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: `${accentColors[i % accentColors.length]}15`, color: accentColors[i % accentColors.length] }}>
-                        {devoir.matiere}
-                      </span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{devoir.classe}</span>
+                      <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>{asn.titre}</h3>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: `${accent}18`, color: accent }}>{asn.matiere}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{asn.classe}</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">{devoir.description} · <span className="text-amber-600 font-semibold">Limite : {devoir.dateLimite}</span></p>
+                    <p className="text-xs text-gray-400 mt-1">{asn.description} · <span className="text-amber-600 font-semibold">Limite : {asn.date_limite}</span></p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400">Moyenne</p>
-                    <p className="text-xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: accentColors[i % accentColors.length] }}>{moyenne}{moyenne !== '—' ? '/20' : ''}</p>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs text-gray-400">Moyenne classe</p>
+                    <p className="text-2xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: accent }}>{moyenne}{moyenne !== '—' ? '/20' : ''}</p>
                   </div>
                 </div>
-                {notesDevoir.length > 0 && (
+                {asnGrades.length > 0 ? (
                   <div className="divide-y divide-gray-50">
-                    {notesDevoir.map(n => {
-                      const eleve = eleves.find(e => e.id === n.eleveId);
-                      return eleve ? (
-                        <div key={n.id} className="flex items-center justify-between px-4 py-2.5">
+                    {asnGrades.map(g => {
+                      const s = students.find(e => e.id === g.student_id);
+                      return s ? (
+                        <div key={g.id} className="flex items-center justify-between px-4 py-2.5">
                           <div className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-full bg-[#FFF0F5] text-[#C2185B] flex items-center justify-center text-xs font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>
-                              {getInitials(eleve.prenom, eleve.nom)}
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-700">{eleve.prenom} {eleve.nom}</p>
-                              <p className="text-xs text-gray-400 italic">{n.commentaire}</p>
-                            </div>
+                            <div className="w-7 h-7 rounded-full bg-[#FFF0F5] text-[#C2185B] flex items-center justify-center text-xs font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
+                            <div><p className="text-sm font-semibold text-gray-700">{s.prenom} {s.nom}</p><p className="text-xs text-gray-400 italic">{g.commentaire}</p></div>
                           </div>
-                          <span className={`text-lg font-extrabold ${n.note >= 16 ? 'text-[#00897B]' : n.note >= 12 ? 'text-[#F9A825]' : 'text-[#C2185B]'}`} style={{ fontFamily: 'Nunito, sans-serif' }}>
-                            {n.note}/20
-                          </span>
+                          <span className={`text-lg font-extrabold ${Number(g.note) >= 16 ? 'text-teal-600' : Number(g.note) >= 12 ? 'text-amber-600' : 'text-rose-600'}`} style={{ fontFamily: 'Nunito, sans-serif' }}>{g.note}/20</span>
                         </div>
                       ) : null;
                     })}
                   </div>
-                )}
-                {notesDevoir.length === 0 && (
-                  <p className="p-4 text-center text-xs text-gray-400">Aucune note saisie pour ce devoir.</p>
-                )}
+                ) : <p className="p-4 text-center text-xs text-gray-400">Aucune note saisie.</p>}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* ─── PERSONNEL TAB ─── */}
+      {/* ── PERSONNEL ── */}
       {tab === 'personnel' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {personnel.map((p, i) => (
-              <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
-                <div className="flex items-start gap-3 mb-3">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-base font-extrabold ${avatarColors[i % avatarColors.length]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>
-                    {getInitials(p.prenom, p.nom)}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>{p.prenom} {p.nom}</h3>
-                    <p className="text-xs font-semibold" style={{ color: '#C2185B' }}>{p.role}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${p.statut === 'Actif' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}`}>
-                      {p.statut}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-1.5 text-xs text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <BookOpen size={12} className="text-[#7B1FA2]" />
-                    <span>{p.matiere}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail size={12} className="text-[#00897B]" />
-                    <span className="truncate">{p.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone size={12} className="text-[#F9A825]" />
-                    <span>{p.telephone}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar size={12} className="text-gray-400" />
-                    <span>Depuis le {p.dateEmbauche}</span>
-                  </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {staff.map((p, i) => (
+            <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+              <div className="flex items-start gap-3 mb-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-base font-extrabold ${avatarBg[i % 4]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(p.prenom, p.nom)}</div>
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>{p.prenom} {p.nom}</h3>
+                  <p className="text-xs font-semibold" style={{ color: EZ_ACCENT }}>{p.role}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${p.statut === 'Actif' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}`}>{p.statut}</span>
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="space-y-1.5 text-xs text-gray-500">
+                <div className="flex items-center gap-2"><GraduationCap size={12} style={{ color: EZ_VIOLET }} /><span>{p.matiere}</span></div>
+                <div className="flex items-center gap-2"><Mail size={12} style={{ color: EZ_TEAL }} /><span className="truncate">{p.email}</span></div>
+                <div className="flex items-center gap-2"><Phone size={12} style={{ color: EZ_GOLD }} /><span>{p.telephone}</span></div>
+                <div className="flex items-center gap-2"><Calendar size={12} className="text-gray-400" /><span>Depuis {p.date_embauche}</span></div>
+              </div>
+            </div>
+          ))}
+          {staff.length === 0 && <div className="col-span-3 text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">Aucun personnel. Initialisez les données.</div>}
         </div>
       )}
 
-      {/* ─── MODAL: Add / Edit Student ─── */}
-      {showAddEleve && (
-        <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-xl sm:rounded-2xl rounded-t-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto" style={{ fontFamily: 'Quicksand, sans-serif' }}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: '#C2185B' }}>
-                {editingEleve ? 'Modifier l\'élève' : 'Inscrire un nouvel élève'}
-              </h2>
-              <button onClick={() => { setShowAddEleve(false); setEditingEleve(null); }} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <X size={18} />
-              </button>
+      {/* ══════════ STUDENT MODAL ══════════ */}
+      {showStudentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ fontFamily: 'Quicksand, sans-serif' }}>
+          <div className="bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-3xl shadow-2xl max-h-[95vh] overflow-y-auto">
+            {/* Modal header */}
+            <div className="sticky top-0 bg-white px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between z-10 rounded-t-3xl sm:rounded-t-2xl">
+              <div>
+                <h2 className="text-xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: EZ_ACCENT }}>
+                  {editingStudent ? 'Modifier le dossier' : 'Inscription d\'un élève'}
+                </h2>
+                <p className="text-xs text-gray-400">Remplissez le formulaire complet</p>
+              </div>
+              <button onClick={() => setShowStudentModal(false)} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500"><X size={18} /></button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { label: 'Prénom', key: 'prenom', type: 'text' },
-                { label: 'Nom', key: 'nom', type: 'text' },
-                { label: 'Âge', key: 'age', type: 'number' },
-                { label: 'Mensualité (MAD)', key: 'montantMensuel', type: 'number' },
-                { label: 'Nom du parent', key: 'nomParent', type: 'text' },
-                { label: 'Email parent', key: 'emailParent', type: 'email' },
-                { label: 'Téléphone', key: 'telephone', type: 'tel' },
-              ].map(({ label, key, type }) => (
-                <div key={key}>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">{label}</label>
-                  <input type={type} value={(formEleve as any)[key] || ''}
-                    onChange={e => setFormEleve(prev => ({ ...prev, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-[#C2185B] text-sm" />
+            <div className="p-6 space-y-6">
+              {/* Section: Élève */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: EZ_ACCENT, fontFamily: 'Nunito, sans-serif' }}>1</div>
+                  <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>Informations de l'Élève</h3>
                 </div>
-              ))}
-
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Classe</label>
-                <select value={formEleve.classe || ''} onChange={e => setFormEleve(prev => ({ ...prev, classe: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-[#C2185B] text-sm bg-white">
-                  {classes.map(c => <option key={c}>{c}</option>)}
-                </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <EzInput label="Prénom" value={studentForm.prenom || ''} onChange={v => sf('prenom', v)} required />
+                  <EzInput label="Nom" value={studentForm.nom || ''} onChange={v => sf('nom', v)} required />
+                  <EzInput label="Date de naissance" value={studentForm.date_naissance || ''} onChange={v => sf('date_naissance', v)} type="date" />
+                  <EzSelect label="Sexe" value={studentForm.sexe || 'M'} onChange={v => sf('sexe', v)} options={['M', 'F']} />
+                  <EzSelect label="Classe" value={studentForm.classe || 'CP-A'} onChange={v => sf('classe', v)} options={classNames.length > 0 ? classNames : ['CP-A', 'CE1-B', 'CE2-A', 'CM1-A', 'CM2-A']} required />
+                  <EzSelect label="Profil" value={studentForm.profil || 'Standard'} onChange={v => sf('profil', v as Profil)} options={['Standard', 'HPI', 'TDAH', 'DYS', 'TSA']} />
+                  <EzSelect label="Statut" value={studentForm.statut || 'Actif'} onChange={v => sf('statut', v)} options={['Actif', 'Parti', 'Suspendu']} />
+                  <EzInput label="Date d'inscription" value={studentForm.date_inscription || ''} onChange={v => sf('date_inscription', v)} type="date" />
+                  <EzInput label="Mensualité (MAD)" value={studentForm.montant_mensuel || 1200} onChange={v => sf('montant_mensuel', Number(v))} type="number" />
+                </div>
+                <div className="mt-3">
+                  <EzLabel>Besoins spéciaux / PAP</EzLabel>
+                  <textarea value={studentForm.besoins_speciaux || ''} onChange={e => sf('besoins_speciaux', e.target.value)} rows={2}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none text-sm resize-none" style={{ fontFamily: 'Quicksand, sans-serif' }} />
+                </div>
+                <div className="mt-3">
+                  <EzLabel>Notes médicales</EzLabel>
+                  <textarea value={studentForm.notes_medicales || ''} onChange={e => sf('notes_medicales', e.target.value)} rows={2}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none text-sm resize-none" style={{ fontFamily: 'Quicksand, sans-serif' }} />
+                </div>
               </div>
 
+              {/* Section: Parent 1 */}
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Profil</label>
-                <select value={formEleve.profil || 'Standard'} onChange={e => setFormEleve(prev => ({ ...prev, profil: e.target.value as Profil }))}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-[#C2185B] text-sm bg-white">
-                  {['Standard', 'HPI', 'TDAH', 'DYS', 'TSA'].map(p => <option key={p}>{p}</option>)}
-                </select>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: EZ_VIOLET, fontFamily: 'Nunito, sans-serif' }}>2</div>
+                  <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>Parent / Tuteur Principal</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <EzSelect label="Relation" value={studentForm.parent1_relation || 'Mère'} onChange={v => sf('parent1_relation', v)} options={['Mère', 'Père', 'Tuteur légal', 'Grand-parent', 'Autre']} />
+                  <div />
+                  <EzInput label="Prénom" value={studentForm.parent1_prenom || ''} onChange={v => sf('parent1_prenom', v)} required />
+                  <EzInput label="Nom" value={studentForm.parent1_nom || ''} onChange={v => sf('parent1_nom', v)} required />
+                  <EzInput label="Email" value={studentForm.parent1_email || ''} onChange={v => sf('parent1_email', v)} type="email" />
+                  <EzInput label="Téléphone" value={studentForm.parent1_telephone || ''} onChange={v => sf('parent1_telephone', v)} type="tel" required />
+                  <EzInput label="Profession" value={studentForm.parent1_profession || ''} onChange={v => sf('parent1_profession', v)} />
+                </div>
+              </div>
+
+              {/* Section: Parent 2 (toggle) */}
+              <div>
+                <button type="button" onClick={() => setShowParent2(!showParent2)}
+                  className="flex items-center gap-2 text-sm font-bold transition-colors"
+                  style={{ color: EZ_TEAL, fontFamily: 'Nunito, sans-serif' }}>
+                  {showParent2 ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  {showParent2 ? 'Masquer le 2ème parent' : '+ Ajouter un 2ème parent / tuteur'}
+                </button>
+                {showParent2 && (
+                  <div className="mt-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: EZ_TEAL, fontFamily: 'Nunito, sans-serif' }}>3</div>
+                      <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>2ème Parent / Tuteur</h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <EzSelect label="Relation" value={studentForm.parent2_relation || 'Père'} onChange={v => sf('parent2_relation', v)} options={['Père', 'Mère', 'Tuteur légal', 'Grand-parent', 'Autre']} />
+                      <div />
+                      <EzInput label="Prénom" value={studentForm.parent2_prenom || ''} onChange={v => sf('parent2_prenom', v)} />
+                      <EzInput label="Nom" value={studentForm.parent2_nom || ''} onChange={v => sf('parent2_nom', v)} />
+                      <EzInput label="Email" value={studentForm.parent2_email || ''} onChange={v => sf('parent2_email', v)} type="email" />
+                      <EzInput label="Téléphone" value={studentForm.parent2_telephone || ''} onChange={v => sf('parent2_telephone', v)} type="tel" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section: Address */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: EZ_GOLD, fontFamily: 'Nunito, sans-serif' }}>{showParent2 ? '4' : '3'}</div>
+                  <h3 className="font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>Adresse</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="col-span-1 sm:col-span-2"><EzInput label="Adresse complète" value={studentForm.adresse || ''} onChange={v => sf('adresse', v)} /></div>
+                  <EzInput label="Ville" value={studentForm.ville || 'Agadir'} onChange={v => sf('ville', v)} />
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleSaveEleve}
-                className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#C2185B', fontFamily: 'Nunito, sans-serif' }}>
-                {editingEleve ? 'Enregistrer' : 'Inscrire l\'élève'}
+            {/* Modal footer */}
+            <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button onClick={handleSaveStudent} disabled={saving}
+                className="flex-1 py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-60"
+                style={{ backgroundColor: EZ_ACCENT, fontFamily: 'Nunito, sans-serif' }}>
+                <Save size={15} />{saving ? 'Enregistrement...' : editingStudent ? 'Enregistrer les modifications' : 'Inscrire l\'élève'}
               </button>
-              <button onClick={() => { setShowAddEleve(false); setEditingEleve(null); }}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors" style={{ fontFamily: 'Nunito, sans-serif' }}>
+              <button onClick={() => setShowStudentModal(false)}
+                className="px-5 py-3 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors" style={{ fontFamily: 'Nunito, sans-serif' }}>
                 Annuler
               </button>
             </div>
