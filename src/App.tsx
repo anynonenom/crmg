@@ -290,11 +290,15 @@ export default function App() {
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [isSavingOrg, setIsSavingOrg] = useState(false);
 
-  // Auth Listener (Modified for Password Login)
+  // Auth Listener + hash-based portal routing
   React.useEffect(() => {
-    // Ensure we have a session for security rules
-    
-    // Check local storage for session
+    // Read URL hash to pre-select a portal (e.g. /#lunja → Lunja login)
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    if (hash === 'eiden' || hash === 'lunja' || hash === 'educazen') {
+      setLoginPortal(hash as 'eiden' | 'lunja' | 'educazen');
+    }
+
+    // Check local storage for existing session
     const savedUser = localStorage.getItem('eiden_user');
     if (savedUser) {
       const userData = JSON.parse(savedUser);
@@ -334,6 +338,13 @@ export default function App() {
       root.style.setProperty('--brand-font-body', '"Inter", sans-serif');
     }
   }, [role, userOrgId, user]);
+
+  // Sync URL hash with active portal (so links stay shareable)
+  React.useEffect(() => {
+    if (!user) {
+      window.location.hash = loginPortal ? loginPortal : '';
+    }
+  }, [loginPortal, user]);
 
   // ── Notifications ──
   const fetchNotifications = React.useCallback(async () => {
