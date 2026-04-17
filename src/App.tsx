@@ -302,7 +302,7 @@ export default function App() {
   // Branding Effect
   React.useEffect(() => {
     const root = document.documentElement;
-    const isLunja = role === 'client' || role === 'admin';
+    const isLunja = (role === 'client' || role === 'admin') && !!user;
     
     if (isLunja) {
       root.style.setProperty('--brand-primary', '#2BBAA5'); // Keppel
@@ -317,7 +317,7 @@ export default function App() {
       root.style.setProperty('--brand-font-head', '"Outfit", sans-serif');
       root.style.setProperty('--brand-font-body', '"Inter", sans-serif');
     }
-  }, [role, userOrgId]);
+  }, [role, userOrgId, user]);
 
   // Centralized fetch helpers
   const fetchOrgs = React.useCallback(async () => {
