@@ -302,7 +302,7 @@ export default function App() {
   // Branding Effect
   React.useEffect(() => {
     const root = document.documentElement;
-    const isLunja = role === 'client' || (role === 'admin' && userOrgId === 'lunja');
+    const isLunja = role === 'client' || role === 'admin';
     
     if (isLunja) {
       root.style.setProperty('--brand-primary', '#2BBAA5'); // Keppel
@@ -932,7 +932,7 @@ export default function App() {
           </button>
           <div className="flex items-center gap-2">
           <div className="text-2xl font-brand-head text-brand-secondary">
-            {role === 'client' || (role === 'admin' && userOrgId === 'lunja') ? 'Lunja Village' : 'Eiden Solutions'}
+            {role === 'superadmin' ? 'Eiden Solutions' : (organizations.find(o => o.id === userOrgId)?.name || 'Lunja Village')}
           </div>
           <div className="h-4 w-[1px] bg-brand-secondary/30 mx-2" />
           <div className="hidden sm:block text-[10px] font-brand-body uppercase tracking-[0.2em] text-brand-secondary/60">
