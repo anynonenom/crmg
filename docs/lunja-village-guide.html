@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lunja Village — User Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Righteous&family=DM+Sans:wght@300;400;500;600;700&family=Great+Vibes&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --teal:#2BBAA5;--teal-dk:#1A8F7C;--coral:#F96635;--amber:#F9A822;
+  --cream:#FDF8EE;--warm:#FFFDF7;--ink:#1A1208;--ink-lt:#4A3B2A;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);line-height:1.6;}
+
+/* Gradient bar */
+.top-bar{height:4px;background:linear-gradient(90deg,var(--teal),var(--amber),var(--coral),var(--teal));}
+
+.container{max-width:900px;margin:0 auto;padding:60px 24px 100px;}
+
+/* Hero */
+.hero{text-align:center;padding:64px 0 56px;position:relative;}
+.watermark{position:absolute;bottom:-40px;left:50%;transform:translateX(-50%);font-family:'Great Vibes',cursive;font-size:clamp(120px,18vw,200px);color:var(--teal);opacity:.05;pointer-events:none;white-space:nowrap;}
+.brand-name{font-family:'Great Vibes',cursive;font-size:clamp(48px,8vw,80px);color:var(--teal);line-height:1.1;margin-bottom:6px;}
+.brand-tag{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;letter-spacing:4px;text-transform:uppercase;color:rgba(26,18,8,.35);margin-bottom:24px;}
+.hero-desc{font-family:'Lora',serif;font-style:italic;font-size:16px;color:rgba(26,18,8,.5);max-width:520px;margin:0 auto;}
+
+/* Section */
+.section{margin:56px 0;}
+.section-eyebrow{font-family:'Righteous',sans-serif;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--teal);display:flex;align-items:center;gap:10px;margin-bottom:24px;}
+.section-eyebrow::before{content:'';width:22px;height:1.5px;background:var(--teal);flex-shrink:0;}
+h2{font-family:'Righteous',sans-serif;font-size:clamp(22px,4vw,32px);color:var(--ink);margin-bottom:8px;}
+.section-sub{font-family:'Lora',serif;font-style:italic;font-size:14px;color:rgba(26,18,8,.45);margin-bottom:32px;}
+
+/* Credentials */
+.cred-card{background:var(--warm);border-radius:20px;padding:32px 36px;box-shadow:0 4px 20px rgba(43,186,165,.08),0 1px 3px rgba(26,18,8,.05);position:relative;overflow:hidden;margin-bottom:20px;}
+.cred-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--teal),var(--amber),var(--coral),var(--teal));}
+.cred-badge{display:inline-block;font-family:'Righteous',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;background:rgba(43,186,165,.1);color:var(--teal);border:1px solid rgba(43,186,165,.2);border-radius:20px;padding:3px 12px;margin-bottom:20px;}
+.cred-row{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.cred-row:last-child{margin-bottom:0;}
+.cred-label{font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:rgba(26,18,8,.35);width:90px;flex-shrink:0;}
+.cred-val{font-family:'Courier New',monospace;font-size:14px;color:var(--teal-dk);background:rgba(43,186,165,.06);border:1.5px solid rgba(43,186,165,.12);border-radius:12px;padding:8px 16px;flex:1;}
+.cred-pill{font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;letter-spacing:1px;background:rgba(249,102,53,.1);color:var(--coral);border-radius:20px;padding:3px 10px;white-space:nowrap;}
+
+/* Divider */
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(43,186,165,.2),transparent);margin:48px 0;}
+
+/* Feature grid */
+.features{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;}
+.feat{background:var(--warm);border-radius:16px;padding:24px;border:1px solid rgba(43,186,165,.1);transition:box-shadow .2s,transform .2s;}
+.feat:hover{box-shadow:0 8px 24px rgba(43,186,165,.1);transform:translateY(-2px);}
+.feat-icon{font-size:22px;margin-bottom:12px;}
+.feat-title{font-family:'Righteous',sans-serif;font-size:14px;color:var(--ink);margin-bottom:6px;}
+.feat-desc{font-size:12px;color:rgba(26,18,8,.45);line-height:1.65;}
+
+/* Steps */
+.steps{list-style:none;}
+.steps li{display:flex;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid rgba(43,186,165,.08);}
+.steps li:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+.step-num{width:30px;height:30px;border-radius:50%;background:rgba(43,186,165,.12);border:1.5px solid rgba(43,186,165,.25);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Righteous',sans-serif;font-size:12px;color:var(--teal);}
+.step-title{font-family:'Righteous',sans-serif;font-size:14px;color:var(--ink);margin-bottom:4px;}
+.step-text{font-size:13px;color:rgba(26,18,8,.5);line-height:1.6;}
+.step-text code{font-family:'Courier New',monospace;font-size:12px;color:var(--teal-dk);background:rgba(43,186,165,.08);padding:2px 8px;border-radius:8px;}
+
+/* URL */
+.url-block{background:rgba(43,186,165,.06);border:1.5px solid rgba(43,186,165,.18);border-radius:14px;padding:14px 20px;font-family:'Courier New',monospace;font-size:14px;color:var(--teal-dk);margin:16px 0;}
+
+/* Note */
+.note{background:rgba(249,102,53,.06);border:1px solid rgba(249,102,53,.15);border-radius:14px;padding:14px 18px;font-size:13px;color:rgba(26,18,8,.55);margin:16px 0;line-height:1.6;}
+.note strong{color:var(--coral);}
+
+/* Footer */
+.footer{text-align:center;padding:40px 0 0;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(26,18,8,.2);}
+.bottom-bar{height:3px;background:linear-gradient(90deg,var(--teal),var(--amber),var(--coral),var(--teal));margin-top:60px;}
+
+@media(max-width:600px){
+  .container{padding:40px 16px 80px;}
+  .cred-card{padding:24px 20px;}
+  .cred-row{flex-direction:column;gap:8px;}
+  .cred-label{width:auto;}
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<div class="container">
+
+  <div class="hero">
+    <div class="watermark">Lunja</div>
+    <div class="brand-name">Lunja Village</div>
+    <div class="brand-tag">Resort Management · User Guide</div>
+    <p class="hero-desc">Everything you need to manage your resort operations — guests, bookings, tasks, leads, and revenue — in one place.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Credentials -->
+  <div class="section">
+    <div class="section-eyebrow">Login Credentials</div>
+    <h2>Your Access Details</h2>
+    <p class="section-sub">Two access levels — Admin and Guest Portal.</p>
+
+    <div class="cred-card">
+      <div class="cred-badge">Admin Access</div>
+      <div class="cred-row">
+        <span class="cred-label">Portal URL</span>
+        <span class="cred-val">crmg.eiden-group.com/lunja-village</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Email</span>
+        <span class="cred-val">lunja@eiden-group.com</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Password</span>
+        <span class="cred-val">password123</span>
+        <span class="cred-pill">Change this</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Role</span>
+        <span class="cred-val">admin — full management access</span>
+      </div>
+    </div>
+
+    <div class="cred-card">
+      <div class="cred-badge">Guest / Client Portal</div>
+      <div class="cred-row">
+        <span class="cred-label">Portal URL</span>
+        <span class="cred-val">crmg.eiden-group.com/lunja-village</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Email</span>
+        <span class="cred-val">client@eiden-group.com</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Password</span>
+        <span class="cred-val">client123</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Role</span>
+        <span class="cred-val">client — guest self-service view</span>
+      </div>
+    </div>
+
+    <div class="note"><strong>Note:</strong> Seed Data button (visible to admin only) populates the system with sample guests, bookings, tasks, and leads for demonstration.</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Features -->
+  <div class="section">
+    <div class="section-eyebrow">Features</div>
+    <h2>Admin Capabilities</h2>
+    <p class="section-sub">Every tool you need to run resort operations.</p>
+
+    <div class="features">
+      <div class="feat">
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">Dashboard</div>
+        <div class="feat-desc">Live stats: active guests, bookings, open tasks, and revenue. Arrivals table and revenue bar chart for last 7 months.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">👥</div>
+        <div class="feat-title">Contacts</div>
+        <div class="feat-desc">Full guest database — VIP, Regular, New. Add, edit, search, and filter contacts. Track stays, spend, and status.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📅</div>
+        <div class="feat-title">Bookings</div>
+        <div class="feat-desc">Create and manage stays, events, and dining reservations. Filter by status (Active, Pending, Completed) and track check-in/out dates.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">✅</div>
+        <div class="feat-title">Tasks</div>
+        <div class="feat-desc">Assign operational tasks to departments (Housekeeping, Maintenance, Concierge, F&amp;B). Mark urgent, set due times, filter by team.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">💰</div>
+        <div class="feat-title">Revenue</div>
+        <div class="feat-desc">Monthly revenue chart, breakdown by booking type, and total earnings tracking across all bookings.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🎯</div>
+        <div class="feat-title">Leads / Pipeline</div>
+        <div class="feat-desc">Sales pipeline from D0 to D4. Track potential clients, their source, deal value, and move them through the funnel.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📆</div>
+        <div class="feat-title">Calendar</div>
+        <div class="feat-desc">Monthly calendar view of all bookings and tasks. Spot conflicts and plan ahead at a glance.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🔔</div>
+        <div class="feat-title">Notifications</div>
+        <div class="feat-desc">Real-time bell notifications for new bookings, tasks, and important events. Mark all as read from the dropdown.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Guest view -->
+  <div class="section">
+    <div class="section-eyebrow">Guest Portal</div>
+    <h2>What Guests See</h2>
+    <p class="section-sub">A read-only self-service view for resort guests.</p>
+    <div class="features">
+      <div class="feat">
+        <div class="feat-icon">🏠</div>
+        <div class="feat-title">Overview</div>
+        <div class="feat-desc">Personal profile summary with stay history and upcoming reservations.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📋</div>
+        <div class="feat-title">My Booking</div>
+        <div class="feat-desc">Current and past bookings with check-in/out dates and status.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🍽️</div>
+        <div class="feat-title">Dining</div>
+        <div class="feat-desc">View dining reservations and restaurant menu highlights.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🌴</div>
+        <div class="feat-title">Activities</div>
+        <div class="feat-desc">Available resort activities and scheduled experiences.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- How to use -->
+  <div class="section">
+    <div class="section-eyebrow">Getting Started</div>
+    <h2>Step by Step</h2>
+
+    <ol class="steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Open the Lunja Village portal</div>
+          <div class="step-text">Go to <code>crmg.eiden-group.com/lunja-village</code>. You'll see the warm cream Lunja Village login page.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Sign in as Admin</div>
+          <div class="step-text">Enter <code>lunja@eiden-group.com</code> and <code>password123</code>. You're taken directly to the Lunja dashboard.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Add your first guest</div>
+          <div class="step-text">Click <strong>Contacts</strong> in the sidebar → <strong>+ New Contact</strong>. Fill in name, email, type (VIP/Regular/New), and status.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Create a booking</div>
+          <div class="step-text">Click <strong>Bookings</strong> → <strong>+ New Booking</strong>. Select guest name, type (Stay/Event/Dining), check-in and check-out dates, and amount.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Assign tasks to staff</div>
+          <div class="step-text">Click <strong>Tasks</strong> → <strong>+ New Task</strong>. Set the task name, assign a department, due time, and mark as urgent if needed.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <div class="step-title">Track revenue</div>
+          <div class="step-text">Click <strong>Revenue</strong> to see the earnings chart by month and a breakdown of all booking amounts.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">7</div>
+        <div class="step-body">
+          <div class="step-title">Log out</div>
+          <div class="step-text">Click the <strong>Log Out</strong> button at the bottom of the sidebar. Your session is cleared and you return to the login page.</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+
+  <div class="footer">© 2026 Lunja Village · Resort Management System · User Guide</div>
+
+</div>
+
+<div class="bottom-bar"></div>
+
+</body>
+</html>

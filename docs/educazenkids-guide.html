@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EducazenKids — Guide d'utilisation</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Quicksand:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --mg:#C2185B;--mg-lt:#E91E7B;--mg-bg:#FFF0F5;
+  --pp:#7B1FA2;--tl:#00897B;--gd:#F9A825;
+  --ink:#2D2D3A;--ink-lt:#5A5A6A;--wh:#FFFFFF;--canvas:#FFFDF9;
+}
+body{font-family:'Quicksand',sans-serif;background:var(--wh);color:var(--ink);line-height:1.6;}
+
+/* Gradient top bar */
+.top-bar{height:4px;background:linear-gradient(90deg,var(--mg),var(--pp),var(--tl),var(--gd));}
+
+.container{max-width:900px;margin:0 auto;padding:60px 24px 100px;}
+
+/* Hero */
+.hero{text-align:center;padding:64px 0 56px;position:relative;}
+.watermark{position:absolute;bottom:-30px;left:50%;transform:translateX(-50%);font-size:clamp(100px,16vw,180px);opacity:.03;pointer-events:none;color:var(--mg);font-family:'Nunito',sans-serif;font-weight:900;white-space:nowrap;}
+.hero-logo{width:clamp(80px,14vw,120px);margin:0 auto 20px;display:block;}
+h1{font-family:'Nunito',sans-serif;font-weight:900;font-size:clamp(30px,5vw,50px);color:var(--ink);letter-spacing:-0.5px;margin-bottom:6px;}
+h1 span{color:var(--mg);}
+.hero-tag{font-size:11px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--ink-lt);margin-bottom:20px;opacity:.55;}
+.hero-desc{font-family:'Playfair Display',serif;font-style:italic;font-size:16px;color:var(--ink-lt);max-width:520px;margin:0 auto;}
+
+/* Section */
+.section{margin:56px 0;}
+.section-eyebrow{font-family:'Cormorant Garamond',serif;font-size:10px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--mg);display:flex;align-items:center;gap:10px;margin-bottom:24px;}
+.section-eyebrow::before{content:'';width:22px;height:1.5px;background:var(--mg);flex-shrink:0;}
+h2{font-family:'Nunito',sans-serif;font-weight:800;font-size:clamp(22px,4vw,32px);color:var(--ink);margin-bottom:8px;}
+.section-sub{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:var(--ink-lt);margin-bottom:32px;}
+
+/* Divider */
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(194,24,91,.15),transparent);margin:48px 0;}
+
+/* Credentials */
+.cred-card{background:var(--wh);border-radius:20px;padding:32px 36px;box-shadow:0 4px 20px rgba(194,24,91,.07),0 1px 3px rgba(45,45,58,.04);border:1px solid rgba(194,24,91,.08);position:relative;overflow:hidden;margin-bottom:20px;}
+.cred-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--mg),var(--pp),var(--tl),var(--gd));}
+.cred-badge{display:inline-block;font-family:'Nunito',sans-serif;font-weight:700;font-size:10px;letter-spacing:2px;text-transform:uppercase;background:rgba(194,24,91,.08);color:var(--mg);border:1px solid rgba(194,24,91,.18);border-radius:20px;padding:4px 14px;margin-bottom:20px;}
+.cred-row{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.cred-row:last-child{margin-bottom:0;}
+.cred-label{font-family:'Quicksand',sans-serif;font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--ink-lt);width:110px;flex-shrink:0;opacity:.6;}
+.cred-val{font-family:'Courier New',monospace;font-size:14px;color:var(--mg);background:rgba(194,24,91,.05);border:1.5px solid rgba(194,24,91,.1);border-radius:12px;padding:8px 16px;flex:1;}
+.cred-pill{font-family:'Nunito',sans-serif;font-weight:700;font-size:10px;background:rgba(249,168,37,.15);color:#B45309;border-radius:20px;padding:3px 10px;white-space:nowrap;}
+
+/* Features */
+.features{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;}
+.feat{background:var(--canvas);border-radius:16px;padding:24px;border:1px solid rgba(194,24,91,.07);transition:box-shadow .2s,transform .2s;}
+.feat:hover{box-shadow:0 8px 24px rgba(194,24,91,.08);transform:translateY(-2px);}
+.feat-icon{font-size:22px;margin-bottom:12px;}
+.feat-title{font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;color:var(--ink);margin-bottom:6px;}
+.feat-desc{font-size:12px;color:var(--ink-lt);line-height:1.65;}
+
+/* Tabs info */
+.tabs-list{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:32px;}
+.tab-chip{font-family:'Nunito',sans-serif;font-weight:700;font-size:11px;padding:6px 16px;border-radius:20px;border:1.5px solid rgba(194,24,91,.18);color:var(--mg);background:rgba(194,24,91,.05);}
+
+/* Steps */
+.steps{list-style:none;}
+.steps li{display:flex;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid rgba(194,24,91,.06);}
+.steps li:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+.step-num{width:30px;height:30px;border-radius:50%;background:rgba(194,24,91,.1);border:1.5px solid rgba(194,24,91,.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;color:var(--mg);}
+.step-title{font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;color:var(--ink);margin-bottom:4px;}
+.step-text{font-size:13px;color:var(--ink-lt);line-height:1.6;}
+.step-text code{font-family:'Courier New',monospace;font-size:12px;color:var(--mg);background:rgba(194,24,91,.06);padding:2px 8px;border-radius:8px;}
+
+/* URL */
+.url-block{background:rgba(194,24,91,.05);border:1.5px solid rgba(194,24,91,.15);border-radius:14px;padding:14px 20px;font-family:'Courier New',monospace;font-size:14px;color:var(--mg);margin:16px 0;}
+
+/* Note */
+.note{background:rgba(0,137,123,.05);border:1px solid rgba(0,137,123,.18);border-radius:14px;padding:14px 18px;font-size:13px;color:var(--ink-lt);margin:16px 0;line-height:1.6;}
+.note strong{color:var(--tl);}
+
+/* Parent vs admin table */
+.compare{width:100%;border-collapse:collapse;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(194,24,91,.06);}
+.compare th{font-family:'Nunito',sans-serif;font-weight:800;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:14px 18px;text-align:left;}
+.compare th:first-child{background:var(--canvas);color:var(--ink-lt);}
+.compare th:nth-child(2){background:rgba(194,24,91,.08);color:var(--mg);}
+.compare th:nth-child(3){background:rgba(123,31,162,.07);color:var(--pp);}
+.compare td{padding:12px 18px;font-size:13px;border-top:1px solid rgba(194,24,91,.06);}
+.compare td:first-child{font-family:'Nunito',sans-serif;font-weight:700;color:var(--ink);}
+.compare td:nth-child(2){background:rgba(194,24,91,.03);}
+.compare td:nth-child(3){background:rgba(123,31,162,.02);}
+.check{color:#00897B;font-size:16px;}
+.cross{color:#bbb;font-size:16px;}
+
+/* Footer */
+.footer{text-align:center;padding:40px 0 0;font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:rgba(45,45,58,.25);}
+.bottom-bar{height:4px;background:linear-gradient(90deg,var(--mg),var(--pp),var(--tl),var(--gd));margin-top:60px;}
+
+@media(max-width:600px){
+  .container{padding:40px 16px 80px;}
+  .cred-card{padding:24px 20px;}
+  .cred-row{flex-direction:column;gap:8px;}
+  .cred-label{width:auto;}
+  .compare{font-size:12px;}
+  .compare td,.compare th{padding:10px 12px;}
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="watermark">🧩</div>
+    <img src="../public/educazen.png" alt="EducazenKids" class="hero-logo" onerror="this.style.display='none'">
+    <h1><span>Educazen</span>Kids</h1>
+    <div class="hero-tag">Centre Éducatif & Psychosocial · Agadir</div>
+    <p class="hero-desc">Guide complet pour l'utilisation du tableau de bord de gestion pédagogique — administrateurs et parents.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Credentials -->
+  <div class="section">
+    <div class="section-eyebrow">Identifiants de connexion</div>
+    <h2>Vos accès</h2>
+    <p class="section-sub">Deux niveaux d'accès — Administrateur et Espace Parent.</p>
+
+    <div class="cred-card">
+      <div class="cred-badge">Accès Administrateur</div>
+      <div class="cred-row">
+        <span class="cred-label">URL du portail</span>
+        <span class="cred-val">crmg.eiden-group.com/educazenkids</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Email</span>
+        <span class="cred-val">admin@educazenkids.com</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Mot de passe</span>
+        <span class="cred-val">educazen123</span>
+        <span class="cred-pill">À modifier</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Rôle</span>
+        <span class="cred-val">admin — accès complet à la gestion</span>
+      </div>
+    </div>
+
+    <div class="cred-card">
+      <div class="cred-badge">Espace Parent</div>
+      <div class="cred-row">
+        <span class="cred-label">URL du portail</span>
+        <span class="cred-val">crmg.eiden-group.com/educazenkids</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Email</span>
+        <span class="cred-val">parent@educazen.com</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Mot de passe</span>
+        <span class="cred-val">parent123</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Rôle</span>
+        <span class="cred-val">client — vue parent (lecture seule)</span>
+      </div>
+    </div>
+
+    <div class="note"><strong>Astuce :</strong> Cliquez sur le bouton <strong>Charger des données test</strong> après votre première connexion admin pour pré-remplir le système avec des élèves, classes et paiements d'exemple.</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Tabs overview -->
+  <div class="section">
+    <div class="section-eyebrow">Navigation</div>
+    <h2>Les 7 onglets du tableau de bord</h2>
+    <p class="section-sub">Chaque onglet couvre un domaine de gestion spécifique.</p>
+
+    <div class="tabs-list">
+      <span class="tab-chip">📊 Tableau de bord</span>
+      <span class="tab-chip">👦 Élèves</span>
+      <span class="tab-chip">🏫 Classes</span>
+      <span class="tab-chip">📋 Présences</span>
+      <span class="tab-chip">💳 Paiements</span>
+      <span class="tab-chip">📝 Devoirs & Notes</span>
+      <span class="tab-chip">👩‍🏫 Personnel</span>
+    </div>
+
+    <div class="features">
+      <div class="feat">
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">Tableau de bord</div>
+        <div class="feat-desc">Vue d'ensemble : nombre d'élèves, taux de présence, paiements du mois, absences récentes et activités récentes.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">👦</div>
+        <div class="feat-title">Élèves</div>
+        <div class="feat-desc">Fiche complète de chaque élève : informations personnelles, parents (1 ou 2), adresse, classe, besoins spéciaux, statut (actif/inactif).</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🏫</div>
+        <div class="feat-title">Classes</div>
+        <div class="feat-desc">Création et gestion des classes — nom, niveau, enseignant responsable, capacité maximale, horaires.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📋</div>
+        <div class="feat-title">Présences</div>
+        <div class="feat-desc">Saisie quotidienne des présences par classe. Marquer présent, absent ou en retard. Statistiques de présence par élève.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">💳</div>
+        <div class="feat-title">Paiements</div>
+        <div class="feat-desc">Suivi des frais mensuels par élève. Statuts : payé, non payé, en retard. Montants encaissés et en attente ce mois.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📝</div>
+        <div class="feat-title">Devoirs & Notes</div>
+        <div class="feat-desc">Création de devoirs par classe et matière. Saisie des notes et visualisation des résultats par élève.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">👩‍🏫</div>
+        <div class="feat-title">Personnel</div>
+        <div class="feat-desc">Registre du personnel enseignant et administratif — poste, contact, spécialité, statut (actif/inactif).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Admin vs Parent -->
+  <div class="section">
+    <div class="section-eyebrow">Comparaison des accès</div>
+    <h2>Admin vs Parent</h2>
+    <p class="section-sub">Ce que chaque rôle peut voir et faire.</p>
+
+    <table class="compare">
+      <thead>
+        <tr>
+          <th>Fonctionnalité</th>
+          <th>👨‍💼 Admin</th>
+          <th>👨‍👩‍👦 Parent</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Tableau de bord global</td><td><span class="check">✓</span></td><td><span class="cross">–</span></td></tr>
+        <tr><td>Voir tous les élèves</td><td><span class="check">✓</span></td><td>Son enfant uniquement</td></tr>
+        <tr><td>Inscrire / modifier un élève</td><td><span class="check">✓</span></td><td><span class="cross">–</span></td></tr>
+        <tr><td>Gérer les classes</td><td><span class="check">✓</span></td><td><span class="cross">–</span></td></tr>
+        <tr><td>Saisir les présences</td><td><span class="check">✓</span></td><td>Vue seulement</td></tr>
+        <tr><td>Enregistrer un paiement</td><td><span class="check">✓</span></td><td>Vue seulement</td></tr>
+        <tr><td>Créer devoirs / notes</td><td><span class="check">✓</span></td><td>Vue seulement</td></tr>
+        <tr><td>Gérer le personnel</td><td><span class="check">✓</span></td><td><span class="cross">–</span></td></tr>
+        <tr><td>Notifications</td><td><span class="check">✓</span> Toutes</td><td><span class="check">✓</span> Son enfant</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Steps -->
+  <div class="section">
+    <div class="section-eyebrow">Prise en main</div>
+    <h2>Guide pas à pas</h2>
+
+    <ol class="steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Ouvrir le portail EducazenKids</div>
+          <div class="step-text">Accédez à <code>crmg.eiden-group.com/educazenkids</code>. La page de connexion EducazenKids s'affiche avec le logo et le formulaire.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Se connecter</div>
+          <div class="step-text">Entrez votre email et votre mot de passe selon votre rôle (admin ou parent). Cliquez sur <strong>Accéder →</strong>.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Charger les données de démonstration (admin)</div>
+          <div class="step-text">Au premier lancement, cliquez sur <code>Charger des données test</code> dans le tableau de bord pour remplir automatiquement 10 élèves, 5 classes, 6 membres du personnel et des paiements.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Inscrire un nouvel élève</div>
+          <div class="step-text">Onglet <strong>Élèves</strong> → bouton <strong>Inscrire un élève</strong>. Remplissez les 4 sections du formulaire : informations de l'élève, parent 1, parent 2 (optionnel), adresse. Cliquez sur <strong>Enregistrer</strong>.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Créer une classe</div>
+          <div class="step-text">Onglet <strong>Classes</strong> → <strong>+ Nouvelle classe</strong>. Définissez le nom, le niveau, l'enseignant responsable et la capacité.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <div class="step-title">Saisir les présences</div>
+          <div class="step-text">Onglet <strong>Présences</strong> → sélectionnez la date et la classe → marquez chaque élève : <code>Présent</code>, <code>Absent</code> ou <code>En retard</code>.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">7</div>
+        <div class="step-body">
+          <div class="step-title">Enregistrer un paiement</div>
+          <div class="step-text">Onglet <strong>Paiements</strong> → trouvez l'élève → cliquez sur <strong>Marquer payé</strong>. Le montant mensuel est automatiquement enregistré et le statut passe à <code>payé</code>.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">8</div>
+        <div class="step-body">
+          <div class="step-title">Vue parent</div>
+          <div class="step-text">Le parent voit uniquement la fiche de son enfant : présences, notes, paiements. Aucune modification possible — lecture seule et sécurisé.</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+
+  <div class="footer">© 2026 EducazenKids · Centre Éducatif & Psychosocial · Agadir · Guide d'utilisation</div>
+
+</div>
+
+<div class="bottom-bar"></div>
+
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EIDEN Group — Super Admin Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Inter:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --forest:#0A0F0C;--teal:#0C5752;--teal-lt:#0E7A73;
+  --gold:#CFC292;--canvas:#FEFDFB;--beige:#F4EBD0;
+  --fd:'Outfit',sans-serif;--fb:'Inter',sans-serif;--fl:'Cormorant Garamond',serif;
+}
+body{font-family:var(--fb);background:var(--forest);color:var(--canvas);line-height:1.6;min-height:100vh;}
+
+/* Marquee */
+.marquee{background:var(--teal);padding:7px 0;overflow:hidden;position:sticky;top:0;z-index:100;}
+.marquee-inner{display:flex;white-space:nowrap;animation:mq 24s linear infinite;}
+.marquee-item{font-family:var(--fl);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:rgba(207,194,146,.6);padding:0 40px;}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+.container{max-width:900px;margin:0 auto;padding:60px 24px 100px;}
+
+/* Hero */
+.hero{text-align:center;padding:72px 0 64px;position:relative;}
+.hero::after{content:'EIDEN';position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-family:var(--fd);font-weight:800;font-size:clamp(100px,18vw,200px);color:rgba(207,194,146,.03);pointer-events:none;letter-spacing:-6px;white-space:nowrap;}
+.eyebrow{font-family:var(--fl);font-size:10px;font-weight:600;letter-spacing:5px;text-transform:uppercase;color:var(--teal-lt);display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px;}
+.eyebrow::before,.eyebrow::after{content:'';width:30px;height:1px;background:var(--teal);}
+h1{font-family:var(--fd);font-weight:700;font-size:clamp(32px,5vw,52px);letter-spacing:-1px;color:var(--canvas);margin-bottom:12px;}
+.hero-sub{font-family:var(--fl);font-style:italic;font-size:17px;color:rgba(254,253,251,.45);max-width:560px;margin:0 auto;}
+
+/* Credentials card */
+.cred-card{background:rgba(12,87,82,.12);border:1px solid rgba(12,87,82,.4);border-radius:2px;padding:32px 36px;margin:48px 0;position:relative;overflow:hidden;}
+.cred-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--teal);}
+.cred-title{font-family:var(--fd);font-weight:600;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--teal-lt);margin-bottom:24px;}
+.cred-row{display:flex;align-items:center;gap:16px;margin-bottom:16px;}
+.cred-row:last-child{margin-bottom:0;}
+.cred-label{font-family:var(--fl);font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:rgba(207,194,146,.5);width:90px;flex-shrink:0;}
+.cred-value{font-family:'Courier New',monospace;font-size:14px;color:var(--gold);background:rgba(12,87,82,.2);border:1px solid rgba(12,87,82,.3);border-radius:2px;padding:8px 16px;flex:1;letter-spacing:1px;}
+.cred-pill{display:inline-block;font-family:var(--fd);font-size:10px;letter-spacing:2px;text-transform:uppercase;background:rgba(12,87,82,.3);color:var(--teal-lt);border:1px solid rgba(12,87,82,.5);border-radius:2px;padding:4px 12px;margin-left:auto;}
+
+/* Section */
+.section{margin:56px 0;}
+.section-label{font-family:var(--fl);font-size:10px;font-weight:600;letter-spacing:5px;text-transform:uppercase;color:var(--teal);display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+.section-label::before{content:'';width:22px;height:1px;background:var(--teal);}
+h2{font-family:var(--fd);font-weight:600;font-size:clamp(20px,3vw,28px);color:var(--canvas);letter-spacing:-0.5px;margin-bottom:8px;}
+.section-sub{font-family:var(--fl);font-style:italic;font-size:14px;color:rgba(254,253,251,.38);margin-bottom:32px;}
+
+/* Feature cards */
+.features{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+.feat{background:rgba(254,253,251,.03);border:1px solid rgba(254,253,251,.06);border-radius:2px;padding:24px;transition:border-color .2s;}
+.feat:hover{border-color:rgba(12,87,82,.5);}
+.feat-icon{font-size:22px;margin-bottom:12px;}
+.feat-title{font-family:var(--fd);font-weight:600;font-size:14px;color:var(--canvas);margin-bottom:6px;}
+.feat-desc{font-family:var(--fb);font-size:12px;color:rgba(254,253,251,.38);line-height:1.65;}
+
+/* Step list */
+.steps{list-style:none;counter-reset:steps;}
+.steps li{counter-increment:steps;display:flex;gap:16px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid rgba(254,253,251,.05);}
+.steps li:last-child{border-bottom:none;margin-bottom:0;}
+.step-num{width:28px;height:28px;border-radius:2px;background:rgba(12,87,82,.3);border:1px solid rgba(12,87,82,.5);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:11px;font-weight:600;color:var(--teal-lt);}
+.step-body{flex:1;}
+.step-title{font-family:var(--fd);font-size:14px;font-weight:600;color:var(--canvas);margin-bottom:4px;}
+.step-text{font-family:var(--fb);font-size:13px;color:rgba(254,253,251,.45);line-height:1.6;}
+.step-text code{font-family:'Courier New',monospace;font-size:12px;color:var(--gold);background:rgba(12,87,82,.2);padding:2px 8px;border-radius:2px;}
+
+/* URL block */
+.url-block{background:rgba(12,87,82,.15);border:1px solid rgba(12,87,82,.35);border-radius:2px;padding:16px 20px;font-family:'Courier New',monospace;font-size:14px;color:var(--gold);letter-spacing:0.5px;margin:16px 0;}
+
+/* Divider */
+.divider{height:1px;background:linear-gradient(90deg,transparent,rgba(12,87,82,.4),transparent);margin:48px 0;}
+
+/* Footer */
+.footer{text-align:center;padding:40px 0 0;font-family:var(--fl);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:rgba(207,194,146,.2);}
+
+/* Alert */
+.alert{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:2px;padding:16px 20px;font-family:var(--fb);font-size:13px;color:rgba(254,180,180,.8);line-height:1.6;margin:20px 0;}
+.alert strong{color:#FCA5A5;}
+
+@media(max-width:600px){
+  .container{padding:40px 16px 80px;}
+  .cred-card{padding:24px 20px;}
+  .cred-row{flex-direction:column;gap:8px;}
+  .cred-label{width:auto;}
+}
+</style>
+</head>
+<body>
+
+<div class="marquee">
+  <div class="marquee-inner">
+    <span class="marquee-item">EIDEN Group</span><span class="marquee-item">Super Admin Guide</span><span class="marquee-item">v2.0</span><span class="marquee-item">Confidential</span><span class="marquee-item">Internal Use Only</span>
+    <span class="marquee-item">EIDEN Group</span><span class="marquee-item">Super Admin Guide</span><span class="marquee-item">v2.0</span><span class="marquee-item">Confidential</span><span class="marquee-item">Internal Use Only</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="hero">
+    <div class="eyebrow">Super Admin Guide</div>
+    <h1>EIDEN Group<br>Workspace</h1>
+    <p class="hero-sub">Complete reference for the EIDEN Group super administrator — global access to all organizations and controls.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Credentials -->
+  <div class="section">
+    <div class="section-label">Login Credentials</div>
+    <h2>Your Access Details</h2>
+    <p class="section-sub">Use these credentials at the EIDEN Group portal only.</p>
+
+    <div class="cred-card">
+      <div class="cred-title">EIDEN Group — Super Admin</div>
+      <div class="cred-row">
+        <span class="cred-label">Portal URL</span>
+        <span class="cred-value">crmg.eiden-group.com</span>
+        <span class="cred-pill">Root</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Email</span>
+        <span class="cred-value">admin@eiden-group.com</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Password</span>
+        <span class="cred-value">superadmin123</span>
+        <span class="cred-pill">Change this</span>
+      </div>
+      <div class="cred-row">
+        <span class="cred-label">Role</span>
+        <span class="cred-value">superadmin</span>
+      </div>
+    </div>
+
+    <div class="alert"><strong>Security note:</strong> The root URL (<code>crmg.eiden-group.com</code>) is restricted to EIDEN Group administrators only. Any attempt to log in with non-superadmin credentials will be blocked with a "No Access" message.</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- What you can do -->
+  <div class="section">
+    <div class="section-label">Capabilities</div>
+    <h2>What You Can Do</h2>
+    <p class="section-sub">Full visibility and control across all organizations.</p>
+
+    <div class="features">
+      <div class="feat">
+        <div class="feat-icon">🌐</div>
+        <div class="feat-title">Global Overview</div>
+        <div class="feat-desc">Dashboard showing combined KPIs for all organizations — total bookings, students enrolled, combined revenue, open tasks.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🏢</div>
+        <div class="feat-title">Organizations</div>
+        <div class="feat-desc">Create, edit, and delete client organizations. Assign credentials, branding, and manage each workspace.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">Cross-Org Data</div>
+        <div class="feat-desc">Switch between organizations using the dropdown in the header to inspect their contacts, bookings, tasks, and revenue.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🔔</div>
+        <div class="feat-title">All Notifications</div>
+        <div class="feat-desc">Bell icon shows notifications from all organizations in real time — enrollments, payments, bookings, and alerts.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">👥</div>
+        <div class="feat-title">Global Users</div>
+        <div class="feat-desc">See all users registered across all organizations from the Users section in the sidebar.</div>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🗂️</div>
+        <div class="feat-title">Client Board</div>
+        <div class="feat-desc">Kanban-style pipeline view of all clients and leads across every organization.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- How to use -->
+  <div class="section">
+    <div class="section-label">How to Use</div>
+    <h2>Step by Step</h2>
+    <p class="section-sub">Getting started with the EIDEN Group dashboard.</p>
+
+    <ol class="steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Log in at the root URL</div>
+          <div class="step-text">Open <code>crmg.eiden-group.com</code> in your browser. Enter your email and password on the EIDEN Group login screen. Only superadmin credentials work here.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Read the Global Overview</div>
+          <div class="step-text">You land on the Global Overview dashboard. At the top: 4 KPI tiles showing total orgs, bookings, students, and combined revenue. Below: organization cards for Lunja Village and EducaZen Kids with their live stats.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Switch into an organization</div>
+          <div class="step-text">Use the <code>🌴 dropdown</code> in the top header to filter data by organization. Click "Lunja Village" or "EducaZen Kids" to see only that org's data in Contacts, Bookings, and Tasks pages.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Manage organizations</div>
+          <div class="step-text">Click <strong>Organizations</strong> in the sidebar to create a new client org, edit their name/email/password, or remove one. Each org gets their own branded login page.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Seed demo data</div>
+          <div class="step-text">Click the <code>Seed Data</code> button in the top bar to populate organizations, guests, bookings, and tasks with sample data for demonstration purposes.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <div class="step-title">Monitor notifications</div>
+          <div class="step-text">Click the <strong>bell icon</strong> in the top right to see all real-time notifications across all organizations — new enrollments at EducaZen, new bookings at Lunja, etc.</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Client org URLs -->
+  <div class="section">
+    <div class="section-label">Client Portals</div>
+    <h2>Organization Login URLs</h2>
+    <p class="section-sub">Share these URLs with each organization. They cannot access the root portal.</p>
+
+    <div style="margin-bottom:12px;font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:rgba(207,194,146,.5);">Lunja Village</div>
+    <div class="url-block">crmg.eiden-group.com/lunja-village</div>
+
+    <div style="margin:24px 0 12px;font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:rgba(207,194,146,.5);">EducaZen Kids</div>
+    <div class="url-block">crmg.eiden-group.com/educazenkids</div>
+  </div>
+
+  <div class="footer">© 2026 EIDEN Group · Internal Document · Confidential</div>
+
+</div>
+</body>
+</html>
