@@ -213,6 +213,9 @@ export default function App() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
+  // EducaZen aggregate stats (for superadmin overview)
+  const [ezStats, setEzStats] = useState({ students: 0, staff: 0, paidThisMonth: 0, unpaidCount: 0, totalRevenue: 0 });
+
   // Real-time data states
   const [guests, setGuests] = useState<Guest[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -355,6 +358,30 @@ export default function App() {
   React.useEffect(() => { if (user) fetchNotifications(); }, [user, fetchNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Fetch EducaZen aggregate stats for superadmin global view
+  React.useEffect(() => {
+    if (userRole !== 'superadmin') return;
+    (async () => {
+      const [{ data: students }, { data: staff }, { data: payments }] = await Promise.all([
+        supabase.from('ez_students').select('id,statut'),
+        supabase.from('ez_staff').select('id'),
+        supabase.from('ez_payments').select('montant,statut,date_paiement'),
+      ]);
+      const now = new Date();
+      const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      const paidThisMonth = (payments || []).filter((p: any) => p.statut === 'payé' && p.date_paiement?.startsWith(thisMonth));
+      const unpaidCount = (payments || []).filter((p: any) => p.statut === 'non_payé').length;
+      const totalRevenue = (payments || []).filter((p: any) => p.statut === 'payé').reduce((acc: number, p: any) => acc + (p.montant || 0), 0);
+      setEzStats({
+        students: (students || []).length,
+        staff: (staff || []).length,
+        paidThisMonth: paidThisMonth.length,
+        unpaidCount,
+        totalRevenue,
+      });
+    })();
+  }, [userRole]);
 
   // Centralized fetch helpers
   const fetchOrgs = React.useCallback(async () => {
@@ -1456,42 +1483,238 @@ export default function App() {
                 />
               ) : role === 'admin' || role === 'superadmin' ? (
                 <>
-                  {page === 'dashboard' && (
+                  {page === 'dashboard' && role === 'superadmin' && (
+                    /* ═══════════════════════════════════════════════════
+                       EIDEN GROUP — GLOBAL OVERVIEW (Super Admin Only)
+                    ═══════════════════════════════════════════════════ */
+                    <div className="space-y-6 sm:space-y-8">
+
+                      {/* Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-eiden-teal">EIDEN Group</span>
+                            <span className="w-1 h-1 rounded-full bg-eiden-teal/40" />
+                            <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-eiden-teal/60">Super Admin</span>
+                          </div>
+                          <h1 className="text-xl sm:text-3xl font-bold text-eiden-deep" style={{fontFamily:'"Outfit",sans-serif',letterSpacing:'-.5px'}}>Global Overview</h1>
+                          <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · {organizations.length || 2} Active Organizations</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => setPage('organizations')} className="btn btn-brand text-xs flex items-center gap-1.5">
+                            <Palmtree size={13} /> Manage Orgs
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Global KPI strip */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[
+                          { label: 'Organizations', value: '2', sub: 'Active', color: '#0C5752', bg: 'rgba(12,87,82,.06)' },
+                          { label: 'Total Bookings', value: bookings.length.toString(), sub: `${bookings.filter(b=>b.status==='Pending').length} pending`, color: '#2BBAA5', bg: 'rgba(43,186,165,.06)' },
+                          { label: 'Students Enrolled', value: ezStats.students.toString(), sub: `${ezStats.staff} staff`, color: '#C2185B', bg: 'rgba(194,24,91,.06)' },
+                          { label: 'Combined Revenue', value: `${(bookings.reduce((a,b)=>a+b.amount,0)+ezStats.totalRevenue).toLocaleString()}`, sub: 'MAD · all orgs', color: '#d7bb93', bg: 'rgba(215,187,147,.08)' },
+                        ].map(k => (
+                          <div key={k.label} className="rounded-xl p-4 border border-gray-100" style={{background:k.bg}}>
+                            <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{color:k.color,opacity:.7}}>{k.label}</div>
+                            <div className="text-2xl font-bold text-eiden-deep" style={{fontFamily:'"Outfit",sans-serif'}}>{k.value}</div>
+                            <div className="text-[11px] text-gray-400 mt-0.5">{k.sub}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Organization Cards */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+                        {/* ── Lunja Village Card ── */}
+                        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+                          {/* Card top bar */}
+                          <div style={{background:'linear-gradient(135deg,#2BBAA5,#1A8F7C)',padding:'20px 24px 16px'}}>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div style={{fontFamily:'"Great Vibes",cursive',fontSize:'32px',color:'white',lineHeight:1.1}}>Lunja Village</div>
+                                <div className="text-[10px] font-bold tracking-widest uppercase text-white/60 mt-1">Resort Management</div>
+                              </div>
+                              <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
+                                <Palmtree size={18} className="text-white" />
+                              </div>
+                            </div>
+                          </div>
+                          {/* Metrics */}
+                          <div className="p-5">
+                            <div className="grid grid-cols-3 gap-3 mb-5">
+                              {[
+                                { label: 'Guests', value: guests.filter(g=>g.orgId==='lunja'||!g.orgId).length, icon: '🏨' },
+                                { label: 'Bookings', value: bookings.filter(b=>b.orgId==='lunja'||!b.orgId).length, icon: '📅' },
+                                { label: 'Open Tasks', value: tasks.filter(t=>!t.done&&(t.orgId==='lunja'||!t.orgId)).length, icon: '✅' },
+                              ].map(m => (
+                                <div key={m.label} className="text-center p-3 rounded-xl bg-keppel/5">
+                                  <div className="text-lg mb-1">{m.icon}</div>
+                                  <div className="text-xl font-bold text-eiden-deep">{m.value}</div>
+                                  <div className="text-[10px] text-gray-400 font-medium">{m.label}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-bold text-gray-600">Revenue</span>
+                              <span className="text-sm font-bold text-keppel">MAD {bookings.filter(b=>b.orgId==='lunja'||!b.orgId).reduce((a,b)=>a+b.amount,0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-keppel rounded-full" style={{width:`${Math.min(100, (bookings.filter(b=>b.status==='Active').length / Math.max(1,bookings.length))*100)}%`}} />
+                              </div>
+                              <span className="text-[10px] text-gray-400">{bookings.filter(b=>b.status==='Active').length} active bookings</span>
+                            </div>
+                            <div className="mt-4 flex gap-2">
+                              <button onClick={()=>{setCurrentOrgId('lunja');setPage('guests');}} className="flex-1 btn text-xs">Contacts</button>
+                              <button onClick={()=>{setCurrentOrgId('lunja');setPage('bookings');}} className="flex-1 btn text-xs">Bookings</button>
+                              <button onClick={()=>{setCurrentOrgId('lunja');setPage('revenue');}} className="flex-1 btn btn-brand text-xs">Revenue</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ── EducaZen Kids Card ── */}
+                        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+                          {/* Card top bar */}
+                          <div style={{background:'linear-gradient(135deg,#C2185B,#7B1FA2)',padding:'20px 24px 16px'}}>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <img src="/educazen.png" alt="" className="h-7 w-auto" style={{filter:'brightness(0) invert(1)'}} onError={e=>(e.currentTarget.style.display='none')} />
+                                </div>
+                                <div style={{fontFamily:'"Nunito",sans-serif',fontWeight:900,fontSize:'20px',color:'white',lineHeight:1.1}}>EducazenKids</div>
+                                <div className="text-[10px] font-bold tracking-widest uppercase text-white/60 mt-1">Centre Éducatif · Agadir</div>
+                              </div>
+                              <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-xl">🎓</div>
+                            </div>
+                          </div>
+                          {/* Metrics */}
+                          <div className="p-5">
+                            <div className="grid grid-cols-3 gap-3 mb-5">
+                              {[
+                                { label: 'Élèves', value: ezStats.students, icon: '👦' },
+                                { label: 'Personnel', value: ezStats.staff, icon: '👩‍🏫' },
+                                { label: 'Impayés', value: ezStats.unpaidCount, icon: '⚠️' },
+                              ].map(m => (
+                                <div key={m.label} className="text-center p-3 rounded-xl" style={{background:'rgba(194,24,91,.05)'}}>
+                                  <div className="text-lg mb-1">{m.icon}</div>
+                                  <div className="text-xl font-bold text-eiden-deep">{m.value}</div>
+                                  <div className="text-[10px] text-gray-400 font-medium">{m.label}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-bold text-gray-600">Revenus (paiements)</span>
+                              <span className="text-sm font-bold" style={{color:'#C2185B'}}>MAD {ezStats.totalRevenue.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full" style={{background:'#C2185B',width:`${Math.min(100,ezStats.students>0?(ezStats.paidThisMonth/ezStats.students)*100:0)}%`}} />
+                              </div>
+                              <span className="text-[10px] text-gray-400">{ezStats.paidThisMonth} payés ce mois</span>
+                            </div>
+                            <div className="mt-4 flex gap-2">
+                              <button onClick={()=>{setCurrentOrgId('educazen');setUserOrgId('educazen');setPage('dashboard');}} className="flex-1 btn text-xs" style={{borderColor:'rgba(194,24,91,.2)',color:'#C2185B'}}>Ouvrir Dashboard</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom row: Recent Activity + Tasks */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+                        {/* Recent Activity */}
+                        <div className="card">
+                          <div className="flex items-center justify-between mb-5">
+                            <h3 className="font-bold text-sm text-eiden-deep">Recent Activity — All Orgs</h3>
+                            <span className="badge badge-gray">Live</span>
+                          </div>
+                          <div className="space-y-3">
+                            {activities.length === 0 ? (
+                              <p className="text-xs text-gray-400 text-center py-4">No activity yet.</p>
+                            ) : activities.slice(0,6).map(a => (
+                              <div key={a.id} className="flex items-start gap-3">
+                                <div className="w-7 h-7 rounded-full bg-eiden-teal/10 flex items-center justify-center shrink-0 mt-0.5">
+                                  <ActivityIcon size={12} className="text-eiden-teal" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-gray-700 truncate"><span className="text-eiden-teal">{a.action}</span> {a.targetType} — {a.targetName}</p>
+                                  <p className="text-[10px] text-gray-400">{a.userName} · {new Date(a.timestamp).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Open Tasks across orgs */}
+                        <div className="card">
+                          <div className="flex items-center justify-between mb-5">
+                            <h3 className="font-bold text-sm text-eiden-deep">Open Tasks — All Orgs</h3>
+                            <button onClick={() => setPage('tasks')} className="text-xs text-eiden-teal font-bold hover:underline">View all</button>
+                          </div>
+                          <div className="space-y-3">
+                            {tasks.filter(t => !t.done).length === 0 ? (
+                              <p className="text-xs text-gray-400 text-center py-4">All tasks completed.</p>
+                            ) : tasks.filter(t=>!t.done).slice(0,5).map(task => (
+                              <div key={task.id} className="flex items-start gap-3">
+                                <div className={cn("mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0", "border-gray-200")} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-gray-700 truncate">{task.name}</p>
+                                  <p className="text-[10px] text-gray-400">{task.department} · Due {task.due}</p>
+                                </div>
+                                {task.urgent && <span className="badge badge-red shrink-0">Urgent</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Revenue chart (combined) */}
+                      <div className="card">
+                        <div className="flex items-center justify-between mb-6">
+                          <div>
+                            <h3 className="font-bold text-sm text-eiden-deep">Lunja Village — Booking Revenue</h3>
+                            <p className="text-xs text-gray-400 mt-0.5">Last 7 months</p>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            <span className="w-2 h-2 bg-eiden-teal rounded-full" /> MAD
+                          </div>
+                        </div>
+                        <div className="h-[180px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={revenueData}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} dy={10} />
+                              <YAxis hide />
+                              <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                {revenueData.map((_, index) => (
+                                  <Cell key={`cell-${index}`} fill={index === revenueData.length - 1 ? '#0C5752' : '#E5E7EB'} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {page === 'dashboard' && role !== 'superadmin' && (
                     <div className="space-y-8">
                       <div>
                         <h1 className="text-lg sm:text-2xl font-bold text-ink">Good morning, Team</h1>
-                        <p className="text-sm text-gray-500">Monday, 13 April 2026 · Lunja Village Resort</p>
+                        <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · Lunja Village Resort</p>
                       </div>
 
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                        <StatCard 
-                          title="Active Guests" 
-                          value={guests.filter(g => g.status === 'In-house').length.toString()} 
-                          change={`${guests.filter(g => g.status === 'Arriving').length} arriving`} 
-                          trend="up" 
-                        />
-                        <StatCard 
-                          title="Total Bookings" 
-                          value={bookings.length.toString()} 
-                          change={`${bookings.filter(b => b.status === 'Pending').length} pending`} 
-                          trend="neutral" 
-                        />
-                        <StatCard 
-                          title="Open Tasks" 
-                          value={tasks.filter(t => !t.done).length.toString()} 
-                          change={`${tasks.filter(t => t.urgent && !t.done).length} urgent`} 
-                          trend="up" 
-                        />
-                        <StatCard 
-                          title="Revenue (Total)" 
-                          value={`MAD ${bookings.reduce((acc, b) => acc + b.amount, 0).toLocaleString()}`} 
-                          change={`${leads.filter(l => l.status === 'Qualified').length} leads`} 
-                          trend="up" 
-                        />
+                        <StatCard title="Active Guests" value={guests.filter(g => g.status === 'In-house').length.toString()} change={`${guests.filter(g => g.status === 'Arriving').length} arriving`} trend="up" />
+                        <StatCard title="Total Bookings" value={bookings.length.toString()} change={`${bookings.filter(b => b.status === 'Pending').length} pending`} trend="neutral" />
+                        <StatCard title="Open Tasks" value={tasks.filter(t => !t.done).length.toString()} change={`${tasks.filter(t => t.urgent && !t.done).length} urgent`} trend="up" />
+                        <StatCard title="Revenue (Total)" value={`MAD ${bookings.reduce((acc, b) => acc + b.amount, 0).toLocaleString()}`} change={`${leads.filter(l => l.status === 'Qualified').length} leads`} trend="up" />
                       </div>
 
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                        {/* Arrivals Table */}
                         <div className="card overflow-hidden p-0">
                           <div className="p-4 border-b border-gray-50 flex items-center justify-between">
                             <h3 className="font-bold text-sm">Today's Arrivals</h3>
@@ -1500,35 +1723,24 @@ export default function App() {
                           <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
                               <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400 font-bold">
-                                <tr>
-                                  <th className="px-4 py-3">Guest</th>
-                                  <th className="px-4 py-3">Room</th>
-                                  <th className="px-4 py-3">Nights</th>
-                                  <th className="px-4 py-3">Status</th>
-                                </tr>
+                                <tr><th className="px-4 py-3">Guest</th><th className="px-4 py-3">Room</th><th className="px-4 py-3">Nights</th><th className="px-4 py-3">Status</th></tr>
                               </thead>
                               <tbody className="divide-y divide-gray-50">
                                 {guests.slice(0, 4).map((guest, i) => (
                                   <tr key={guest.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-4 py-3 flex items-center gap-3">
-                                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold", i % 2 === 0 ? "bg-keppel/20 text-keppel" : "bg-amber/20 text-amber-700")}>
-                                        {guest.initials}
-                                      </div>
+                                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold", i % 2 === 0 ? "bg-keppel/20 text-keppel" : "bg-amber/20 text-amber-700")}>{guest.initials}</div>
                                       <span className="font-medium">{guest.name}</span>
                                     </td>
                                     <td className="px-4 py-3 text-gray-600">Villa {i + 1}</td>
                                     <td className="px-4 py-3 text-gray-600">{3 + i}</td>
-                                    <td className="px-4 py-3">
-                                      <Badge status={i % 2 === 0 ? "Checked in" : "Arriving 3pm"} />
-                                    </td>
+                                    <td className="px-4 py-3"><Badge status={i % 2 === 0 ? "Checked in" : "Arriving 3pm"} /></td>
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
                           </div>
                         </div>
-
-                        {/* Staff Tasks */}
                         <div className="card">
                           <div className="flex items-center justify-between mb-6">
                             <h3 className="font-bold text-sm text-ink">Open Staff Tasks</h3>
@@ -1537,10 +1749,7 @@ export default function App() {
                           <div className="space-y-4">
                             {tasks.slice(0, 4).map(task => (
                               <div key={task.id} className="flex items-start gap-3 group">
-                                <button className={cn(
-                                  "mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
-                                  task.done ? "bg-keppel border-keppel text-white" : "border-gray-200 hover:border-keppel"
-                                )}>
+                                <button className={cn("mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all", task.done ? "bg-keppel border-keppel text-white" : "border-gray-200 hover:border-keppel")}>
                                   {task.done && <CheckSquare size={12} />}
                                 </button>
                                 <div className="flex-1">
@@ -1554,7 +1763,6 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Revenue Chart */}
                       <div className="card">
                         <div className="flex items-center justify-between mb-6">
                           <h3 className="font-bold text-sm text-ink">Revenue — last 7 months</h3>
@@ -1566,18 +1774,9 @@ export default function App() {
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={revenueData}>
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                              <XAxis 
-                                dataKey="month" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} 
-                                dy={10}
-                              />
+                              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} dy={10} />
                               <YAxis hide />
-                              <Tooltip 
-                                cursor={{ fill: '#f9fafb' }}
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                              />
+                              <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                               <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                 {revenueData.map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={index === revenueData.length - 1 ? 'var(--color-brand-primary)' : '#E5E7EB'} />
@@ -1587,7 +1786,6 @@ export default function App() {
                           </ResponsiveContainer>
                         </div>
                       </div>
-
                     </div>
                   )}
                   {page === 'client-board' && (
