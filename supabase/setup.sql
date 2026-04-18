@@ -31,7 +31,44 @@ $$;
 
 
 -- ================================================================
--- STEP 2: Enable RLS on every table
+-- STEP 2: Create any tables the app uses that may not exist yet
+-- ================================================================
+
+-- reminders (written by the app but never explicitly created)
+create table if not exists reminders (
+  id          text        primary key,
+  "orgId"     text,
+  "guestName" text,
+  "sentBy"    text,
+  timestamp   timestamptz default now()
+);
+
+-- activities log
+create table if not exists activities (
+  id           text        primary key,
+  "orgId"      text,
+  "userId"     text,
+  "userName"   text,
+  action       text,
+  "targetType" text,
+  "targetName" text,
+  timestamp    timestamptz default now()
+);
+
+-- notifications
+create table if not exists notifications (
+  id         text        primary key,
+  org_id     text,
+  title      text,
+  message    text,
+  type       text        default 'info',
+  read       boolean     default false,
+  created_at timestamptz default now()
+);
+
+
+-- ================================================================
+-- STEP 3: Enable RLS on every table
 -- ================================================================
 alter table profiles        enable row level security;
 alter table organizations   enable row level security;
@@ -52,7 +89,7 @@ alter table ez_attendance   enable row level security;
 
 
 -- ================================================================
--- STEP 3: Profiles policies
+-- STEP 4: Profiles policies
 -- ================================================================
 drop policy if exists "profiles_select_own"        on profiles;
 drop policy if exists "profiles_select_superadmin" on profiles;
@@ -69,7 +106,7 @@ create policy "profiles_update_own" on profiles
 
 
 -- ================================================================
--- STEP 4: Organizations — superadmin only
+-- STEP 5: Organizations — superadmin only
 -- ================================================================
 drop policy if exists "orgs_superadmin" on organizations;
 drop policy if exists "orgs_admin_read" on organizations;
@@ -82,7 +119,7 @@ create policy "orgs_admin_read" on organizations
 
 
 -- ================================================================
--- STEP 5: Lunja tables (camelCase "orgId" column)
+-- STEP 6: Lunja tables (camelCase "orgId" column)
 -- ================================================================
 
 -- guests
@@ -129,7 +166,7 @@ create policy "notif_admin"      on notifications for all using (org_id = get_my
 
 
 -- ================================================================
--- STEP 6: EducaZen tables (snake_case org_id)
+-- STEP 7: EducaZen tables (snake_case org_id)
 -- ================================================================
 
 -- ez_students
@@ -176,7 +213,7 @@ create policy "ez_attendance_ad" on ez_attendance for all using (org_id = get_my
 
 
 -- ================================================================
--- STEP 7: Seed Auth users + profiles
+-- STEP 8: Seed Auth users + profiles
 --
 -- After running this script, go to:
 --   Supabase Dashboard → Authentication → Users → Add User
