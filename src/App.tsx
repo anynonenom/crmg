@@ -1141,18 +1141,6 @@ export default function App() {
                         onMouseLeave={e=>{e.currentTarget.style.background='#122620';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 18px rgba(0,0,0,.22)';}}
                       >Access →</button>
                     </form>
-                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(12,87,82,.1)',textAlign:'center'}}>
-                      <p style={{fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(10,15,12,.16)',marginBottom:'14px'}}>Other Portals</p>
-                      <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
-                        {([['lunja','/lunja-village','Lunja Village','#2BBAA5'],['educazen','/educazenkids','EducaZen Kids','#C2185B']] as const).map(([portal,path,label,color])=>(
-                          <button key={portal} onClick={()=>{setLoginPortal(portal as any);setLoginEmail('');setLoginPassword('');setLoginError('');window.history.pushState({},'',path);}}
-                            style={{padding:'7px 14px',borderRadius:'2px',border:`1px solid ${color}30`,background:`${color}0D`,color,fontFamily:'"Outfit",sans-serif',fontWeight:600,fontSize:'11px',letterSpacing:'2px',textTransform:'uppercase',cursor:'pointer',transition:'all .2s'}}
-                            onMouseEnter={e=>{e.currentTarget.style.background=`${color}22`;e.currentTarget.style.borderColor=`${color}80`;}}
-                            onMouseLeave={e=>{e.currentTarget.style.background=`${color}0D`;e.currentTarget.style.borderColor=`${color}30`;}}
-                          >{label}</button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1205,18 +1193,6 @@ export default function App() {
                         onMouseLeave={e=>{e.currentTarget.style.background='#2BBAA5';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 18px rgba(43,186,165,.3)';}}
                       >Access →</button>
                     </form>
-                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(43,186,165,.1)',textAlign:'center'}}>
-                      <p style={{fontFamily:'"DM Sans",sans-serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.18)',marginBottom:'14px'}}>Other Portals</p>
-                      <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
-                        {([['eiden','/','EIDEN Group','#0C5752'],['educazen','/educazenkids','EducaZen Kids','#C2185B']] as const).map(([portal,path,label,color])=>(
-                          <button key={portal} onClick={()=>{setLoginPortal(portal as any);setLoginEmail('');setLoginPassword('');setLoginError('');window.history.pushState({},'',path);}}
-                            style={{padding:'7px 14px',borderRadius:'14px',border:`1px solid ${color}30`,background:`${color}0D`,color,fontFamily:'"DM Sans",sans-serif',fontWeight:600,fontSize:'11px',letterSpacing:'1.5px',cursor:'pointer',transition:'all .2s'}}
-                            onMouseEnter={e=>{e.currentTarget.style.background=`${color}22`;e.currentTarget.style.borderColor=`${color}80`;}}
-                            onMouseLeave={e=>{e.currentTarget.style.background=`${color}0D`;e.currentTarget.style.borderColor=`${color}30`;}}
-                          >{label}</button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1272,18 +1248,6 @@ export default function App() {
                         onMouseLeave={e=>{e.currentTarget.style.background='#C2185B';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 18px rgba(194,24,91,.28)';}}
                       >Accéder →</button>
                     </form>
-                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(194,24,91,.07)',textAlign:'center'}}>
-                      <p style={{fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(45,45,58,.2)',marginBottom:'14px'}}>Other Portals</p>
-                      <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
-                        {([['eiden','/','EIDEN Group','#0C5752'],['lunja','/lunja-village','Lunja Village','#2BBAA5']] as const).map(([portal,path,label,color])=>(
-                          <button key={portal} onClick={()=>{setLoginPortal(portal as any);setLoginEmail('');setLoginPassword('');setLoginError('');window.history.pushState({},'',path);}}
-                            style={{padding:'7px 14px',borderRadius:'12px',border:`1px solid ${color}30`,background:`${color}0D`,color,fontFamily:'"Quicksand",sans-serif',fontWeight:700,fontSize:'11px',letterSpacing:'1px',cursor:'pointer',transition:'all .2s'}}
-                            onMouseEnter={e=>{e.currentTarget.style.background=`${color}22`;e.currentTarget.style.borderColor=`${color}80`;}}
-                            onMouseLeave={e=>{e.currentTarget.style.background=`${color}0D`;e.currentTarget.style.borderColor=`${color}30`;}}
-                          >{label}</button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
