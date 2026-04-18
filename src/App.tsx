@@ -231,6 +231,7 @@ export default function App() {
   const [myGuestProfile, setMyGuestProfile] = useState<Guest | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [taskFilter, setTaskFilter] = useState<'all' | 'me' | 'today' | 'urgent'>('all');
+  const [lunjaMonitorTab, setLunjaMonitorTab] = useState<'overview'|'guests'|'bookings'|'tasks'|'revenue'>('overview');
 
   // New Guest Form State
   const [showNewGuestForm, setShowNewGuestForm] = useState(false);
@@ -1296,49 +1297,42 @@ export default function App() {
             )}>
           <div className="mb-8 px-2">
             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
-              {role === 'superadmin'
-                ? currentOrgId === 'educazen' ? 'EducaZen Kids' : currentOrgId === 'lunja' ? 'Lunja Village' : 'Global Control'
-                : role === 'admin' ? 'Management' : 'My Stay'}
+              {role === 'superadmin' ? 'EIDEN Group' : role === 'admin' ? 'Management' : 'My Stay'}
             </div>
             <nav className="space-y-1" onClick={() => setIsMobileMenuOpen(false)}>
               {role === 'superadmin' ? (
-                currentOrgId === 'educazen' ? (
-                  // ── Superadmin viewing EducaZen ──
-                  <>
-                    <button onClick={() => { setCurrentOrgId(null); setPage('dashboard'); }}
-                      className="flex items-center gap-2 text-xs text-gray-400 hover:text-ink mb-3 px-2 py-1 rounded-lg hover:bg-gray-50 w-full transition-colors">
-                      <ChevronRight size={12} className="rotate-180" /> All Organizations
+                <>
+                  {/* ── Superadmin: always-visible nav ── */}
+                  <SidebarItem icon={LayoutDashboard} label="Overview" active={page === 'dashboard' && !currentOrgId} onClick={() => { setCurrentOrgId(null); setPage('dashboard'); }} />
+                  <SidebarItem icon={Palmtree} label="Organizations" active={page === 'organizations'} onClick={() => { setCurrentOrgId(null); setPage('organizations'); }} />
+
+                  {/* ── Client Partners section ── */}
+                  <div className="pt-4 pb-1 px-2">
+                    <div className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Client Partners</div>
+                  </div>
+
+                  {/* Lunja Village */}
+                  <div className={`rounded-xl overflow-hidden transition-all ${currentOrgId === 'lunja' ? 'bg-keppel/8 border border-keppel/20' : ''}`}>
+                    <button
+                      onClick={() => { setCurrentOrgId('lunja'); setPage('dashboard'); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${currentOrgId === 'lunja' ? 'text-keppel' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>
+                      <div className={`w-2 h-2 rounded-full ${currentOrgId === 'lunja' ? 'bg-keppel' : 'bg-gray-300'}`} />
+                      Lunja Village
+                      <ChevronRight size={12} className={`ml-auto transition-transform ${currentOrgId === 'lunja' ? 'rotate-90 text-keppel' : 'text-gray-300'}`} />
                     </button>
-                    <SidebarItem icon={LayoutDashboard} label="EducaZen Dashboard" active={true} onClick={() => {}} />
-                  </>
-                ) : currentOrgId === 'lunja' ? (
-                  // ── Superadmin viewing Lunja Village ──
-                  <>
-                    <button onClick={() => { setCurrentOrgId(null); setPage('dashboard'); }}
-                      className="flex items-center gap-2 text-xs text-gray-400 hover:text-ink mb-3 px-2 py-1 rounded-lg hover:bg-gray-50 w-full transition-colors">
-                      <ChevronRight size={12} className="rotate-180" /> All Organizations
+                  </div>
+
+                  {/* EducaZen Kids */}
+                  <div className={`rounded-xl overflow-hidden transition-all ${currentOrgId === 'educazen' ? 'bg-pink-50 border border-pink-100' : ''}`}>
+                    <button
+                      onClick={() => { setCurrentOrgId('educazen'); setPage('dashboard'); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${currentOrgId === 'educazen' ? 'text-[#C2185B]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>
+                      <div className={`w-2 h-2 rounded-full ${currentOrgId === 'educazen' ? 'bg-[#C2185B]' : 'bg-gray-300'}`} />
+                      EducaZen Kids
+                      <ChevronRight size={12} className={`ml-auto transition-transform ${currentOrgId === 'educazen' ? 'rotate-90 text-[#C2185B]' : 'text-gray-300'}`} />
                     </button>
-                    <SidebarItem icon={LayoutDashboard} label="Dashboard" active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
-                    <SidebarItem icon={Users} label="Contacts" active={page === 'guests'} onClick={() => setPage('guests')} />
-                    <SidebarItem icon={CalendarDays} label="Bookings" active={page === 'bookings'} onClick={() => setPage('bookings')} />
-                    <SidebarItem icon={CheckSquare} label="Tasks" active={page === 'tasks'} onClick={() => setPage('tasks')} />
-                    <SidebarItem icon={CalendarDays} label="Calendar" active={page === 'calendar'} onClick={() => setPage('calendar')} />
-                    <SidebarItem icon={BarChart3} label="Revenue" active={page === 'revenue'} onClick={() => setPage('revenue')} />
-                  </>
-                ) : (
-                  // ── Superadmin global view ──
-                  <>
-                    <SidebarItem icon={LayoutDashboard} label="Super Dashboard" active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
-                    <SidebarItem icon={Palmtree} label="Organizations" active={page === 'organizations'} onClick={() => setPage('organizations')} />
-                    <SidebarItem icon={ArrowUpRight} label="Global Client Board" active={page === 'client-board'} onClick={() => setPage('client-board')} />
-                    <SidebarItem icon={Users} label="Global Contacts" active={page === 'guests'} onClick={() => setPage('guests')} />
-                    <SidebarItem icon={CalendarDays} label="Global Bookings" active={page === 'bookings'} onClick={() => setPage('bookings')} />
-                    <SidebarItem icon={CheckSquare} label="Global Tasks" active={page === 'tasks'} onClick={() => setPage('tasks')} />
-                    <SidebarItem icon={CalendarDays} label="Global Calendar" active={page === 'calendar'} onClick={() => setPage('calendar')} />
-                    <SidebarItem icon={BarChart3} label="Global Revenue" active={page === 'revenue'} onClick={() => setPage('revenue')} />
-                    <SidebarItem icon={Users} label="Global Users" active={page === 'users'} onClick={() => setPage('users')} />
-                  </>
-                )
+                  </div>
+                </>
               ) : role === 'admin' ? (
                 userOrgId === 'educazen' ? (
                   // EducaZen admin sidebar — single entry point
@@ -1668,25 +1662,24 @@ export default function App() {
                     );
                   })()}
 
-                  {page === 'dashboard' && (role !== 'superadmin' || currentOrgId === 'lunja') && (
+                  {/* ── Lunja admin dashboard (Lunja admin only, not superadmin) ── */}
+                  {page === 'dashboard' && role !== 'superadmin' && (
                     <div className="space-y-8">
                       <div>
-                        <h1 className="text-lg sm:text-2xl font-bold text-ink">{role === 'superadmin' ? 'Lunja Village — Overview' : 'Good morning, Team'}</h1>
+                        <h1 className="text-lg sm:text-2xl font-bold text-ink">Good morning, Team</h1>
                         <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · Lunja Village Resort</p>
                       </div>
-
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                        <StatCard title="Active Guests" value={guests.filter(g => g.status === 'In-house').length.toString()} change={`${guests.filter(g => g.status === 'Arriving').length} arriving`} trend="up" onClick={() => setPage('guests')} />
-                        <StatCard title="Total Bookings" value={bookings.length.toString()} change={`${bookings.filter(b => b.status === 'Pending').length} pending`} trend="neutral" onClick={() => setPage('bookings')} />
-                        <StatCard title="Open Tasks" value={tasks.filter(t => !t.done).length.toString()} change={`${tasks.filter(t => t.urgent && !t.done).length} urgent`} trend="up" onClick={() => setPage('tasks')} />
-                        <StatCard title="Revenue (Total)" value={`MAD ${bookings.reduce((acc, b) => acc + b.amount, 0).toLocaleString()}`} change={`${leads.filter(l => l.status === 'Qualified').length} leads`} trend="up" onClick={() => setPage('revenue')} />
+                        <StatCard title="Active Guests" value={guests.filter(g=>g.status==='In-house').length.toString()} change={`${guests.filter(g=>g.status==='Arriving').length} arriving`} trend="up" onClick={()=>setPage('guests')} />
+                        <StatCard title="Total Bookings" value={bookings.length.toString()} change={`${bookings.filter(b=>b.status==='Pending').length} pending`} trend="neutral" onClick={()=>setPage('bookings')} />
+                        <StatCard title="Open Tasks" value={tasks.filter(t=>!t.done).length.toString()} change={`${tasks.filter(t=>t.urgent&&!t.done).length} urgent`} trend="up" onClick={()=>setPage('tasks')} />
+                        <StatCard title="Revenue (Total)" value={`MAD ${bookings.reduce((a,b)=>a+b.amount,0).toLocaleString()}`} change={`${leads.filter(l=>l.status==='Qualified').length} leads`} trend="up" onClick={()=>setPage('revenue')} />
                       </div>
-
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                         <div className="card overflow-hidden p-0">
                           <div className="p-4 border-b border-gray-50 flex items-center justify-between">
-                            <button onClick={() => setPage('guests')} className="font-bold text-sm hover:text-keppel transition-colors">Today's Arrivals</button>
-                            <Badge status={`${guests.filter(g => g.status === 'Arriving').length} expected`} />
+                            <button onClick={()=>setPage('guests')} className="font-bold text-sm hover:text-keppel transition-colors">Today's Arrivals</button>
+                            <Badge status={`${guests.filter(g=>g.status==='Arriving').length} expected`} />
                           </div>
                           <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
@@ -1694,15 +1687,15 @@ export default function App() {
                                 <tr><th className="px-4 py-3">Guest</th><th className="px-4 py-3">Room</th><th className="px-4 py-3">Nights</th><th className="px-4 py-3">Status</th></tr>
                               </thead>
                               <tbody className="divide-y divide-gray-50">
-                                {guests.slice(0, 4).map((guest, i) => (
-                                  <tr key={guest.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setPage('guests')}>
+                                {guests.slice(0,4).map((guest,i)=>(
+                                  <tr key={guest.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-4 py-3 flex items-center gap-3">
-                                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold", i % 2 === 0 ? "bg-keppel/20 text-keppel" : "bg-amber/20 text-amber-700")}>{guest.initials}</div>
+                                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold",i%2===0?"bg-keppel/20 text-keppel":"bg-amber/20 text-amber-700")}>{guest.initials}</div>
                                       <span className="font-medium">{guest.name}</span>
                                     </td>
-                                    <td className="px-4 py-3 text-gray-600">Villa {i + 1}</td>
-                                    <td className="px-4 py-3 text-gray-600">{3 + i}</td>
-                                    <td className="px-4 py-3"><Badge status={i % 2 === 0 ? "Checked in" : "Arriving 3pm"} /></td>
+                                    <td className="px-4 py-3 text-gray-600">Villa {i+1}</td>
+                                    <td className="px-4 py-3 text-gray-600">{3+i}</td>
+                                    <td className="px-4 py-3"><Badge status={i%2===0?"Checked in":"Arriving 3pm"} /></td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -1711,44 +1704,41 @@ export default function App() {
                         </div>
                         <div className="card">
                           <div className="flex items-center justify-between mb-6">
-                            <button onClick={() => setPage('tasks')} className="font-bold text-sm text-ink hover:text-keppel transition-colors">Open Staff Tasks</button>
-                            <button onClick={() => setPage('tasks')} className="text-xs text-keppel font-bold hover:underline">View all</button>
+                            <button onClick={()=>setPage('tasks')} className="font-bold text-sm text-ink hover:text-keppel transition-colors">Open Staff Tasks</button>
+                            <button onClick={()=>setPage('tasks')} className="text-xs text-keppel font-bold hover:underline">View all</button>
                           </div>
                           <div className="space-y-4">
-                            {tasks.slice(0, 4).map(task => (
-                              <div key={task.id} className="flex items-start gap-3 group cursor-pointer hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors" onClick={() => setPage('tasks')}>
-                                <button className={cn("mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all", task.done ? "bg-keppel border-keppel text-white" : "border-gray-200 group-hover:border-keppel")}>
-                                  {task.done && <CheckSquare size={12} />}
+                            {tasks.slice(0,4).map(task=>(
+                              <div key={task.id} className="flex items-start gap-3 group cursor-pointer hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors" onClick={()=>setPage('tasks')}>
+                                <button className={cn("mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all",task.done?"bg-keppel border-keppel text-white":"border-gray-200 group-hover:border-keppel")}>
+                                  {task.done&&<CheckSquare size={12}/>}
                                 </button>
                                 <div className="flex-1">
-                                  <div className={cn("text-sm font-medium", task.done && "text-gray-400 line-through")}>{task.name}</div>
+                                  <div className={cn("text-sm font-medium",task.done&&"text-gray-400 line-through")}>{task.name}</div>
                                   <div className="text-[10px] text-gray-500 mt-0.5">{task.department} · Due {task.due}</div>
                                 </div>
-                                {task.urgent && <Badge status="Urgent" />}
+                                {task.urgent&&<Badge status="Urgent"/>}
                               </div>
                             ))}
                           </div>
                         </div>
                       </div>
-
                       <div className="card">
                         <div className="flex items-center justify-between mb-6">
                           <h3 className="font-bold text-sm text-ink">Revenue — last 7 months</h3>
                           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            <span className="w-2 h-2 bg-brand-primary rounded-full" /> MAD
+                            <span className="w-2 h-2 bg-brand-primary rounded-full"/> MAD
                           </div>
                         </div>
                         <div className="h-[200px] w-full">
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={revenueData}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} dy={10} />
-                              <YAxis hide />
-                              <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                {revenueData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={index === revenueData.length - 1 ? 'var(--color-brand-primary)' : '#E5E7EB'} />
-                                ))}
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/>
+                              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#9ca3af',fontWeight:600}} dy={10}/>
+                              <YAxis hide/>
+                              <Tooltip cursor={{fill:'#f9fafb'}} contentStyle={{borderRadius:'8px',border:'none',boxShadow:'0 10px 15px -3px rgb(0 0 0/.1)'}}/>
+                              <Bar dataKey="value" radius={[4,4,0,0]}>
+                                {revenueData.map((_,i)=><Cell key={i} fill={i===revenueData.length-1?'var(--color-brand-primary)':'#E5E7EB'}/>)}
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
@@ -1756,7 +1746,254 @@ export default function App() {
                       </div>
                     </div>
                   )}
-                  {page === 'client-board' && (
+
+                  {/* ── Superadmin: Lunja Village monitoring (tabbed, read-only) ── */}
+                  {role === 'superadmin' && currentOrgId === 'lunja' && (() => {
+                    const lGuests   = guests.filter(g=>g.orgId==='lunja'||!g.orgId);
+                    const lBookings = bookings.filter(b=>b.orgId==='lunja'||!b.orgId);
+                    const lTasks    = tasks.filter(t=>t.orgId==='lunja'||!t.orgId);
+                    const lRevenue  = lBookings.reduce((s,b)=>s+(Number(b.amount)||0),0);
+                    const lPending  = lBookings.filter(b=>b.status==='Pending').length;
+                    const lUrgent   = lTasks.filter(t=>t.urgent&&!t.done).length;
+                    const TABS = [
+                      {id:'overview', label:'Overview',  icon:'📊'},
+                      {id:'guests',   label:'Guests',    icon:'👥'},
+                      {id:'bookings', label:'Bookings',  icon:'📅'},
+                      {id:'tasks',    label:'Tasks',     icon:'✅'},
+                      {id:'revenue',  label:'Revenue',   icon:'💰'},
+                    ] as const;
+                    return (
+                      <div className="space-y-4">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/>
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-keppel">Lunja Village · Monitoring</span>
+                            </div>
+                            <h1 className="text-xl sm:text-2xl font-bold text-ink" style={{fontFamily:'"Great Vibes",cursive',fontSize:'clamp(22px,4vw,32px)'}}>Lunja Village</h1>
+                            <p className="text-xs text-gray-400">Resort & Hospitality · Read-only view</p>
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-400 hidden sm:block">{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</span>
+                        </div>
+
+                        {/* Tab bar */}
+                        <div className="bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 flex gap-1 overflow-x-auto" style={{scrollbarWidth:'none'}}>
+                          {TABS.map(t=>(
+                            <button key={t.id} onClick={()=>setLunjaMonitorTab(t.id)}
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${lunjaMonitorTab===t.id?'text-white shadow-sm bg-keppel':'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
+                              <span>{t.icon}</span> {t.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* ── Overview tab ── */}
+                        {lunjaMonitorTab==='overview' && (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              {[
+                                {label:'Total Guests',  value:lGuests.length,                            sub:`${lGuests.filter(g=>g.status==='In-house').length} in-house`,   color:'#2BBAA5'},
+                                {label:'Bookings',      value:lBookings.length,                          sub:`${lPending} pending`,                                              color:'#F59E0B'},
+                                {label:'Open Tasks',    value:lTasks.filter(t=>!t.done).length,          sub:`${lUrgent} urgent`,                                                color: lUrgent>0?'#F96635':'#6B7280'},
+                                {label:'Total Revenue', value:`MAD ${lRevenue.toLocaleString()}`,        sub:`${lBookings.filter(b=>b.status==='Confirmed').length} confirmed`, color:'#0C5752'},
+                              ].map(k=>(
+                                <div key={k.label} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                                  <div className="text-[10px] font-bold uppercase tracking-widest mb-1 text-gray-400">{k.label}</div>
+                                  <div className="text-xl font-extrabold" style={{color:k.color}}>{k.value}</div>
+                                  <div className="text-[11px] text-gray-400 mt-0.5">{k.sub}</div>
+                                </div>
+                              ))}
+                            </div>
+                            {lUrgent>0&&<div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3"><span className="text-amber-500">⚠️</span><span className="text-sm font-semibold text-amber-700">{lUrgent} urgent task{lUrgent>1?'s':''} need attention</span></div>}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="card p-0 overflow-hidden">
+                                <div className="px-4 py-3 border-b border-gray-50 font-bold text-sm">Recent Guests</div>
+                                <div className="divide-y divide-gray-50">
+                                  {lGuests.slice(0,5).map((g,i)=>(
+                                    <div key={g.id} className="flex items-center gap-3 px-4 py-3">
+                                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",i%2===0?"bg-keppel/10 text-keppel":"bg-amber/10 text-amber-700")}>{g.initials}</div>
+                                      <div className="flex-1 min-w-0"><p className="text-sm font-semibold truncate">{g.name}</p><p className="text-[10px] text-gray-400">{g.email}</p></div>
+                                      <Badge status={g.type}/>
+                                    </div>
+                                  ))}
+                                  {lGuests.length===0&&<p className="px-4 py-6 text-center text-xs text-gray-400 italic">No guests yet.</p>}
+                                </div>
+                              </div>
+                              <div className="card p-0 overflow-hidden">
+                                <div className="px-4 py-3 border-b border-gray-50 font-bold text-sm">Recent Bookings</div>
+                                <div className="divide-y divide-gray-50">
+                                  {lBookings.slice(0,5).map(b=>(
+                                    <div key={b.id} className="flex items-center justify-between px-4 py-3">
+                                      <div><p className="text-sm font-semibold">{b.guestName}</p><p className="text-[10px] text-gray-400">{b.checkIn} · {b.type}</p></div>
+                                      <div className="text-right"><p className="text-sm font-bold text-keppel">MAD {Number(b.amount).toLocaleString()}</p><Badge status={b.status}/></div>
+                                    </div>
+                                  ))}
+                                  {lBookings.length===0&&<p className="px-4 py-6 text-center text-xs text-gray-400 italic">No bookings yet.</p>}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Guests tab ── */}
+                        {lunjaMonitorTab==='guests' && (
+                          <div className="card p-0 overflow-hidden">
+                            <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+                              <span className="font-bold text-sm">All Contacts · {lGuests.length} total</span>
+                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Read-only</span>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm text-left" style={{minWidth:'580px'}}>
+                                <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                                  <tr><th className="px-4 py-3">Guest</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Stays</th><th className="px-4 py-3">Status</th></tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                  {lGuests.map((g,i)=>(
+                                    <tr key={g.id} className="hover:bg-gray-50">
+                                      <td className="px-4 py-3"><div className="flex items-center gap-3"><div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",i%2===0?"bg-keppel/10 text-keppel":"bg-amber/10 text-amber-700")}>{g.initials}</div><span className="font-semibold">{g.name}</span></div></td>
+                                      <td className="px-4 py-3"><Badge status={g.type}/></td>
+                                      <td className="px-4 py-3 text-gray-500 text-xs">{g.email}</td>
+                                      <td className="px-4 py-3 text-gray-600">{g.stays||0}</td>
+                                      <td className="px-4 py-3"><Badge status={g.status||'Active'}/></td>
+                                    </tr>
+                                  ))}
+                                  {lGuests.length===0&&<tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No contacts found.</td></tr>}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Bookings tab ── */}
+                        {lunjaMonitorTab==='bookings' && (
+                          <div className="card p-0 overflow-hidden">
+                            <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+                              <span className="font-bold text-sm">All Bookings · {lBookings.length} total</span>
+                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Read-only</span>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm text-left" style={{minWidth:'620px'}}>
+                                <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                                  <tr><th className="px-4 py-3">Guest</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Check-in</th><th className="px-4 py-3">Check-out</th><th className="px-4 py-3">Amount</th><th className="px-4 py-3">Status</th></tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                  {lBookings.map(b=>(
+                                    <tr key={b.id} className="hover:bg-gray-50">
+                                      <td className="px-4 py-3 font-semibold">{b.guestName}</td>
+                                      <td className="px-4 py-3 text-gray-500">{b.type}</td>
+                                      <td className="px-4 py-3 text-gray-500">{b.checkIn||'—'}</td>
+                                      <td className="px-4 py-3 text-gray-500">{b.checkOut||'—'}</td>
+                                      <td className="px-4 py-3 font-bold text-keppel">MAD {Number(b.amount).toLocaleString()}</td>
+                                      <td className="px-4 py-3"><Badge status={b.status}/></td>
+                                    </tr>
+                                  ))}
+                                  {lBookings.length===0&&<tr><td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No bookings found.</td></tr>}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Tasks tab ── */}
+                        {lunjaMonitorTab==='tasks' && (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                              {['Housekeeping','F&B','Concierge','Maintenance'].map(dept=>{
+                                const dt=lTasks.filter(t=>t.department===dept);
+                                return(
+                                  <div key={dept} className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
+                                    <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{dept}</div>
+                                    <div className="text-2xl font-extrabold text-eiden-deep">{dt.filter(t=>!t.done).length}</div>
+                                    <div className="text-[11px] text-gray-400">{dt.filter(t=>t.urgent&&!t.done).length} urgent</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="card p-0 overflow-hidden">
+                              <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+                                <span className="font-bold text-sm">All Tasks · {lTasks.filter(t=>!t.done).length} open</span>
+                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Read-only</span>
+                              </div>
+                              <div className="divide-y divide-gray-50">
+                                {lTasks.sort((a,b)=>Number(b.urgent)-Number(a.urgent)).map(t=>(
+                                  <div key={t.id} className="flex items-center gap-3 px-4 py-3">
+                                    <div className={cn("w-4 h-4 rounded border-2 shrink-0",t.done?"bg-keppel border-keppel":"border-gray-300")}/>
+                                    <div className="flex-1 min-w-0">
+                                      <p className={cn("text-sm font-medium truncate",t.done&&"line-through text-gray-400")}>{t.name}</p>
+                                      <p className="text-[10px] text-gray-400">{t.department} · {t.assignee} · Due {t.due}</p>
+                                    </div>
+                                    {t.urgent&&!t.done&&<span className="badge badge-red shrink-0">Urgent</span>}
+                                    {t.done&&<span className="badge badge-green shrink-0">Done</span>}
+                                  </div>
+                                ))}
+                                {lTasks.length===0&&<p className="px-4 py-8 text-center text-xs text-gray-400 italic">No tasks found.</p>}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Revenue tab ── */}
+                        {lunjaMonitorTab==='revenue' && (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {[
+                                {label:'Total Revenue',    value:`MAD ${lRevenue.toLocaleString()}`,                         color:'#2BBAA5'},
+                                {label:'Confirmed',        value:`MAD ${lBookings.filter(b=>b.status==='Confirmed').reduce((s,b)=>s+b.amount,0).toLocaleString()}`, color:'#0C5752'},
+                                {label:'Pending',          value:`MAD ${lBookings.filter(b=>b.status==='Pending').reduce((s,b)=>s+b.amount,0).toLocaleString()}`,   color:'#F96635'},
+                              ].map(k=>(
+                                <div key={k.label} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                                  <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{k.label}</div>
+                                  <div className="text-xl font-extrabold" style={{color:k.color}}>{k.value}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="card">
+                              <div className="flex items-center justify-between mb-5">
+                                <div><h3 className="font-bold text-sm">Revenue Trend</h3><p className="text-xs text-gray-400 mt-0.5">Last 7 months · MAD</p></div>
+                              </div>
+                              <div className="h-[200px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={revenueData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/>
+                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#9ca3af',fontWeight:600}} dy={10}/>
+                                    <YAxis hide/>
+                                    <Tooltip cursor={{fill:'#f9fafb'}} contentStyle={{borderRadius:'8px',border:'none',boxShadow:'0 10px 15px -3px rgb(0 0 0/.1)'}} formatter={(v:any)=>[`MAD ${Number(v).toLocaleString()}`,'Revenue']}/>
+                                    <Bar dataKey="value" radius={[4,4,0,0]}>
+                                      {revenueData.map((_,i)=><Cell key={i} fill={i===revenueData.length-1?'#2BBAA5':'#E5E7EB'}/>)}
+                                    </Bar>
+                                  </BarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </div>
+                            <div className="card p-0 overflow-hidden">
+                              <div className="px-4 py-3 border-b border-gray-50 font-bold text-sm">Bookings Breakdown</div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left" style={{minWidth:'480px'}}>
+                                  <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                                    <tr><th className="px-4 py-3">Guest</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Amount</th><th className="px-4 py-3">Status</th></tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-50">
+                                    {lBookings.map(b=>(
+                                      <tr key={b.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 font-semibold">{b.guestName}</td>
+                                        <td className="px-4 py-3 text-gray-500">{b.type}</td>
+                                        <td className="px-4 py-3 text-gray-500">{b.checkIn||'—'}</td>
+                                        <td className="px-4 py-3 font-bold text-keppel">MAD {Number(b.amount).toLocaleString()}</td>
+                                        <td className="px-4 py-3"><Badge status={b.status}/></td>
+                                      </tr>
+                                    ))}
+                                    {lBookings.length===0&&<tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 italic">No bookings.</td></tr>}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {page === 'client-board' && role !== 'superadmin' && (
                     <div className="space-y-6">
                       <ClientBoard currentOrgId={currentOrgId} userRole={userRole!} />
                     </div>
