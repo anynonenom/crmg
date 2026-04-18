@@ -296,19 +296,49 @@ export default function App() {
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [isSavingOrg, setIsSavingOrg] = useState(false);
 
-  // Auth Listener — restore session from localStorage
+  // Auth Listener — restore session from Supabase Auth
   React.useEffect(() => {
-    const savedUser = localStorage.getItem('eiden_user');
-    if (savedUser) {
-      const userData = JSON.parse(savedUser);
+    const applyProfile = (profile: any, email: string, uid: string) => {
+      const userData = {
+        uid,
+        email,
+        displayName: profile.display_name || email,
+        role: profile.role as Role,
+        orgId: profile.org_id as string | null,
+      };
       setUser(userData);
       setUserRole(userData.role);
       setRole(userData.role);
       setUserOrgId(userData.orgId);
       setCurrentOrgId(userData.orgId);
       setPage(userData.role === 'client' ? 'client-overview' : 'dashboard');
-    }
-    setIsAuthReady(true);
+    };
+
+    // Check for an existing Supabase session on mount
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) applyProfile(profile, session.user.email ?? '', session.user.id);
+      }
+      setIsAuthReady(true);
+    });
+
+    // React to future sign-in / sign-out events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        setUser(null);
+        setUserRole(null);
+        setRole('admin');
+        setUserOrgId(null);
+        setCurrentOrgId(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Branding Effect
@@ -466,55 +496,63 @@ export default function App() {
     e.preventDefault();
     setLoginError('');
 
-    const doLogin = (userData: any, targetPage: Page) => {
-      setUser(userData);
-      setUserRole(userData.role);
-      setRole(userData.role);
-      setUserOrgId(userData.orgId);
-      setCurrentOrgId(userData.orgId);
-      setPage(targetPage);
-      localStorage.setItem('eiden_user', JSON.stringify(userData));
-    };
+    // ── 1. Authenticate via Supabase Auth ────────────────────────────
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    });
 
-    // ── EIDEN portal (root /) — SUPERADMIN ONLY ──────────────────────
-    if (loginPortal === 'eiden') {
-      if (loginEmail === 'admin@eiden-group.com' && loginPassword === 'superadmin123') {
-        doLogin({ uid: 'superadmin', email: loginEmail, displayName: 'Super Admin', role: 'superadmin', orgId: null }, 'dashboard');
-      } else {
-        // Security: any non-superadmin credentials are rejected with a clear message
-        setLoginError('No Access — this portal is restricted to EIDEN Group administrators only.');
-      }
+    if (authError || !authData.user) {
+      if (loginPortal === 'eiden')     setLoginError('No Access — invalid credentials.');
+      else if (loginPortal === 'educazen') setLoginError('Identifiants incorrects.');
+      else                             setLoginError('Invalid credentials.');
       return;
     }
 
-    // ── LUNJA VILLAGE portal (/lunja-village) — ADMIN ONLY ──────────
-    if (loginPortal === 'lunja') {
-      // Hardcoded fallback (always works)
-      if (loginEmail === 'admin@lunja.com' && loginPassword === 'lunja123') {
-        doLogin({ uid: 'lunja-admin', email: loginEmail, displayName: 'Lunja Village Admin', role: 'admin', orgId: 'lunja' }, 'dashboard');
-        return;
-      }
-      // Also check Supabase orgs table (for custom org credentials)
-      try {
-        const { data } = await supabase.from('organizations').select('*').eq('email', loginEmail).eq('id', 'lunja').limit(1);
-        if (data && data.length > 0 && data[0].password === loginPassword) {
-          doLogin({ uid: data[0].id, email: loginEmail, displayName: `${data[0].name} Admin`, role: 'admin', orgId: 'lunja' }, 'dashboard');
-          return;
-        }
-      } catch (err) { console.error(err); }
+    // ── 2. Fetch profile (role + org_id) ────────────────────────────
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (profileError || !profile) {
+      await supabase.auth.signOut();
+      setLoginError('Account not configured. Contact your administrator.');
+      return;
+    }
+
+    // ── 3. Portal access gate ─────────────────────────────────────────
+    if (loginPortal === 'eiden' && profile.role !== 'superadmin') {
+      await supabase.auth.signOut();
+      setLoginError('No Access — this portal is restricted to EIDEN Group administrators only.');
+      return;
+    }
+    if (loginPortal === 'lunja' && profile.org_id !== 'lunja') {
+      await supabase.auth.signOut();
       setLoginError('Invalid credentials.');
       return;
     }
-
-    // ── EDUCAZEN portal (/educazenkids) — ADMIN ONLY ─────────────────
-    if (loginPortal === 'educazen') {
-      if (loginEmail === 'admin@educazenkids.com' && loginPassword === 'educazen123') {
-        doLogin({ uid: 'educazen-admin', email: loginEmail, displayName: 'EducaZen Admin', role: 'admin', orgId: 'educazen' }, 'dashboard');
-        return;
-      }
+    if (loginPortal === 'educazen' && profile.org_id !== 'educazen') {
+      await supabase.auth.signOut();
       setLoginError('Identifiants incorrects.');
       return;
     }
+
+    // ── 4. Set app state ─────────────────────────────────────────────
+    const userData = {
+      uid: authData.user.id,
+      email: authData.user.email ?? loginEmail,
+      displayName: profile.display_name || authData.user.email,
+      role: profile.role as Role,
+      orgId: profile.org_id as string | null,
+    };
+    setUser(userData);
+    setUserRole(userData.role);
+    setRole(userData.role);
+    setUserOrgId(profile.org_id);
+    setCurrentOrgId(profile.org_id);
+    setPage(userData.role === 'client' ? 'client-overview' : 'dashboard');
   };
 
   const logActivity = async (action: string, targetType: string, targetName: string, orgId: string) => {
@@ -538,11 +576,12 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setUserRole(null);
+    setRole('admin');
     setUserOrgId(null);
     setCurrentOrgId(null);
-    localStorage.removeItem('eiden_user');
   };
 
   const seedData = async () => {
