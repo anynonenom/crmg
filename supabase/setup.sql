@@ -220,7 +220,7 @@ create policy "ez_attendance_ad" on ez_attendance for all using (org_id = get_my
 -- Create these 3 users (confirm email = true, set password):
 --
 --   1. admin@eiden-group.com   / superadmin123   → role: superadmin, org_id: NULL
---   2. admin@lunja.com         / lunja123        → role: admin,      org_id: lunja
+--   2. admin@lunja-village.com  / <your password> → role: admin,      org_id: lunja
 --   3. admin@educazenkids.com  / educazen123     → role: admin,      org_id: educazen
 --
 -- Then run this INSERT to create their profiles (replace the UUIDs
