@@ -983,13 +983,38 @@ export default function App() {
     <div className="min-h-screen bg-cream flex flex-col">
       {/* Top Bar */}
       {(() => {
-        const isEz = userOrgId === 'educazen';
-        const hBg = isEz ? 'bg-white border-b border-gray-200 shadow-sm' : 'bg-brand-primary border-b border-brand-secondary/20 shadow-md';
-        const hMenuBtn = isEz ? 'text-gray-600 hover:text-gray-900' : 'text-brand-secondary/80 hover:text-brand-secondary';
-        const hSep = isEz ? 'bg-gray-200' : 'bg-brand-secondary/30';
-        const hSub = isEz ? 'text-gray-400' : 'text-brand-secondary/60';
-        const hBell = isEz ? 'text-gray-500 hover:text-gray-800 hover:bg-gray-100' : 'text-white/60 hover:text-white hover:bg-white/10';
-        const hAvatar = isEz ? 'bg-[#FFF0F5] text-[#C2185B] border-[#C2185B]/20' : 'bg-brand-secondary/20 text-brand-secondary border-brand-secondary/30';
+        const isEz = userOrgId === 'educazen' || (role === 'superadmin' && currentOrgId === 'educazen');
+        const isSuperGlobal = role === 'superadmin' && !currentOrgId;
+        const isSuperLunja  = role === 'superadmin' && currentOrgId === 'lunja';
+
+        // Header theme per context
+        const hBg      = isSuperGlobal ? 'bg-eiden-deep border-b border-eiden-teal/20 shadow-md'
+                       : isEz          ? 'bg-white border-b border-gray-200 shadow-sm'
+                       :                 'bg-brand-primary border-b border-brand-secondary/20 shadow-md';
+        const hMenuBtn = isSuperGlobal ? 'text-eiden-gold/60 hover:text-eiden-gold' : isEz ? 'text-gray-600 hover:text-gray-900' : 'text-brand-secondary/80 hover:text-brand-secondary';
+        const hSep     = isSuperGlobal ? 'bg-eiden-teal/30' : isEz ? 'bg-gray-200' : 'bg-brand-secondary/30';
+        const hSub     = isSuperGlobal ? 'text-eiden-gold/60' : isEz ? 'text-gray-400' : 'text-brand-secondary/60';
+        const hBell    = isSuperGlobal ? 'text-eiden-gold/60 hover:text-eiden-gold hover:bg-eiden-teal/20'
+                       : isEz          ? 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                       :                 'text-white/60 hover:text-white hover:bg-white/10';
+        const hAvatar  = isSuperGlobal ? 'bg-eiden-teal/20 text-eiden-gold border-eiden-gold/30'
+                       : isEz          ? 'bg-[#FFF0F5] text-[#C2185B] border-[#C2185B]/20'
+                       :                 'bg-brand-secondary/20 text-brand-secondary border-brand-secondary/30';
+
+        const hLogoText = isSuperGlobal ? (
+          <span className="text-xl font-bold tracking-widest uppercase text-eiden-gold" style={{fontFamily:'"Outfit",sans-serif',letterSpacing:'4px'}}>EIDEN</span>
+        ) : isEz ? (
+          <img src="/educazen.png" alt="EducazenKids" className="h-9 w-auto" onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
+        ) : (
+          <div className="text-2xl font-brand-head text-brand-secondary">
+            {isSuperLunja ? 'Lunja Village' : (organizations.find(o=>o.id===userOrgId)?.name || 'Lunja Village')}
+          </div>
+        );
+        const hSubLabel = isSuperGlobal ? 'Client Monitoring'
+                        : isEz          ? (role === 'superadmin' ? 'EducaZen Kids' : 'Espace Administrateur')
+                        : isSuperLunja  ? 'Lunja Village'
+                        : role === 'admin' ? 'Manager Portal' : 'Guest Portal';
+
         return (
       <header className={`h-16 ${hBg} flex items-center justify-between px-4 md:px-6 sticky top-0 z-50`}>
         <div className="flex items-center gap-2 md:gap-4">
@@ -997,16 +1022,10 @@ export default function App() {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-            {isEz ? (
-              <img src="/educazen.png" alt="EducazenKids" className="h-9 w-auto" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-            ) : (
-              <div className="text-2xl font-brand-head text-brand-secondary">
-                {role === 'superadmin' ? 'Eiden Solutions' : (organizations.find(o => o.id === userOrgId)?.name || 'Lunja Village')}
-              </div>
-            )}
+            {hLogoText}
             <div className={`h-4 w-[1px] mx-2 ${hSep}`} />
-            <div className={`hidden sm:block text-[10px] font-brand-body uppercase tracking-[0.2em] ${hSub}`} style={isEz ? { fontFamily: 'Cormorant Garamond, serif' } : {}}>
-              {role === 'superadmin' ? 'SuperAdmin Portal' : role === 'admin' ? isEz ? 'Espace Administrateur' : 'Manager Portal' : isEz ? 'Espace Parent' : 'Guest Portal'}
+            <div className={`hidden sm:block text-[10px] font-brand-body uppercase tracking-[0.2em] ${hSub}`}>
+              {hSubLabel}
             </div>
           </div>
         </div>
@@ -1014,12 +1033,12 @@ export default function App() {
         <div className="flex items-center gap-2 md:gap-4">
           {user && userRole === 'superadmin' && (
             <div className="hidden sm:flex items-center gap-3">
-              <button onClick={seedData} className="btn btn-brand text-[10px] py-1 flex items-center gap-2">
+              <button onClick={seedData} className={`text-[10px] py-1 px-3 rounded-md border font-medium cursor-pointer transition-all ${isSuperGlobal ? 'border-eiden-teal/30 bg-eiden-teal/10 text-eiden-gold hover:bg-eiden-teal/20' : 'btn btn-brand'} flex items-center gap-2`}>
                 <Database size={12} /> Seed Data
               </button>
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isEz ? 'bg-gray-50 border-gray-200' : 'bg-white/10 border-brand-secondary/20'}`}>
-                <Palmtree size={14} className={isEz ? 'text-gray-400' : 'text-brand-secondary'} />
-                <select className={`bg-transparent text-xs font-brand-body focus:outline-none cursor-pointer ${isEz ? 'text-gray-700' : 'text-white'}`}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isSuperGlobal ? 'bg-eiden-teal/10 border-eiden-teal/30' : isEz ? 'bg-gray-50 border-gray-200' : 'bg-white/10 border-brand-secondary/20'}`}>
+                <Palmtree size={14} className={isSuperGlobal ? 'text-eiden-gold/60' : isEz ? 'text-gray-400' : 'text-brand-secondary'} />
+                <select className={`bg-transparent text-xs font-brand-body focus:outline-none cursor-pointer ${isSuperGlobal ? 'text-eiden-gold' : isEz ? 'text-gray-700' : 'text-white'}`}
                   value={currentOrgId || ''} onChange={e => {
                     const id = e.target.value || null;
                     setCurrentOrgId(id);
