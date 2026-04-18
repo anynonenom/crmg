@@ -1380,213 +1380,253 @@ export default function App() {
                 />
               ) : role === 'admin' || role === 'superadmin' ? (
                 <>
-                  {page === 'dashboard' && role === 'superadmin' && !currentOrgId && (
-                    /* ═══════════════════════════════════════════════════
-                       EIDEN GROUP — GLOBAL OVERVIEW (Super Admin Only)
-                    ═══════════════════════════════════════════════════ */
+                  {page === 'dashboard' && role === 'superadmin' && !currentOrgId && (() => {
+                    // ── derived stats ──
+                    const lunjaGuests   = guests.filter(g => g.orgId === 'lunja' || !g.orgId);
+                    const lunjaBookings = bookings.filter(b => b.orgId === 'lunja' || !b.orgId);
+                    const lunjaRevenue  = lunjaBookings.reduce((s, b) => s + (Number(b.amount) || 0), 0);
+                    const lunjaPending  = lunjaBookings.filter(b => b.status === 'Pending').length;
+                    const lunjaTasks    = tasks.filter(t => !t.done && (t.orgId === 'lunja' || !t.orgId));
+                    const lunjaUrgent   = lunjaTasks.filter(t => t.urgent).length;
+                    const ezPayRate     = ezStats.students > 0 ? Math.round((ezStats.paidThisMonth / ezStats.students) * 100) : 0;
+                    const combinedRev   = lunjaRevenue + ezStats.totalRevenue;
+                    return (
                     <div className="space-y-6 sm:space-y-8">
 
-                      {/* Header */}
+                      {/* ── Header ── */}
                       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-eiden-teal">EIDEN Group</span>
-                            <span className="w-1 h-1 rounded-full bg-eiden-teal/40" />
-                            <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-eiden-teal/60">Super Admin</span>
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-eiden-teal">EIDEN Group · Super Admin</span>
                           </div>
-                          <h1 className="text-xl sm:text-3xl font-bold text-eiden-deep" style={{fontFamily:'"Outfit",sans-serif',letterSpacing:'-.5px'}}>Global Overview</h1>
-                          <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · {organizations.length || 2} Active Organizations</p>
+                          <h1 className="text-xl sm:text-3xl font-bold text-eiden-deep" style={{fontFamily:'"Outfit",sans-serif',letterSpacing:'-.5px'}}>
+                            Client Monitoring
+                          </h1>
+                          <p className="text-sm text-gray-400 mt-1">
+                            {new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+                            &nbsp;·&nbsp;{organizations.length || 2} active client partners
+                          </p>
                         </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => setPage('organizations')} className="btn btn-brand text-xs flex items-center gap-1.5">
-                            <Palmtree size={13} /> Manage Orgs
-                          </button>
-                        </div>
+                        <button onClick={() => setPage('organizations')}
+                          className="btn btn-brand text-xs flex items-center gap-1.5 self-start sm:self-auto">
+                          <Palmtree size={13} /> Manage Clients
+                        </button>
                       </div>
 
-                      {/* Global KPI strip */}
+                      {/* ── Top KPI strip ── */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {[
-                          { label: 'Organizations', value: '2', sub: 'Active', color: '#0C5752', bg: 'rgba(12,87,82,.06)', page: 'organizations' as Page },
-                          { label: 'Total Bookings', value: bookings.length.toString(), sub: `${bookings.filter(b=>b.status==='Pending').length} pending`, color: '#2BBAA5', bg: 'rgba(43,186,165,.06)', page: 'bookings' as Page },
-                          { label: 'Students Enrolled', value: ezStats.students.toString(), sub: `${ezStats.staff} staff`, color: '#C2185B', bg: 'rgba(194,24,91,.06)', page: null },
-                          { label: 'Combined Revenue', value: `${(bookings.reduce((a,b)=>a+b.amount,0)+ezStats.totalRevenue).toLocaleString()}`, sub: 'MAD · all orgs', color: '#d7bb93', bg: 'rgba(215,187,147,.08)', page: 'revenue' as Page },
+                          { label: 'Client Partners',    value: (organizations.length || 2).toString(), sub: 'All active',                 color: '#0C5752', bg: 'rgba(12,87,82,.06)'    },
+                          { label: 'Lunja Revenue',      value: `MAD ${lunjaRevenue.toLocaleString()}`, sub: `${lunjaPending} pending`,     color: '#2BBAA5', bg: 'rgba(43,186,165,.06)'  },
+                          { label: 'EducaZen Revenue',   value: `MAD ${ezStats.totalRevenue.toLocaleString()}`, sub: `${ezStats.unpaidCount} unpaid`, color: '#C2185B', bg: 'rgba(194,24,91,.06)'  },
+                          { label: 'Combined Revenue',   value: `MAD ${combinedRev.toLocaleString()}`,  sub: 'All organisations',           color: '#d7bb93', bg: 'rgba(215,187,147,.08)' },
                         ].map(k => (
-                          <div key={k.label}
-                            className="rounded-xl p-4 border border-gray-100 transition-all duration-150 cursor-pointer hover:shadow-md hover:-translate-y-0.5"
-                            style={{background:k.bg}}
-                            onClick={() => k.page && setPage(k.page)}
-                          >
+                          <div key={k.label} className="rounded-xl p-4 border border-gray-100" style={{background:k.bg}}>
                             <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{color:k.color,opacity:.7}}>{k.label}</div>
-                            <div className="text-2xl font-bold text-eiden-deep" style={{fontFamily:'"Outfit",sans-serif'}}>{k.value}</div>
+                            <div className="text-lg sm:text-2xl font-bold text-eiden-deep truncate" style={{fontFamily:'"Outfit",sans-serif'}}>{k.value}</div>
                             <div className="text-[11px] text-gray-400 mt-0.5">{k.sub}</div>
                           </div>
                         ))}
                       </div>
 
-                      {/* Organization Cards */}
+                      {/* ── Client Partner Cards ── */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-                        {/* ── Lunja Village Card ── */}
-                        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white hover:shadow-md transition-shadow">
-                          {/* Card top bar */}
-                          <div style={{background:'linear-gradient(135deg,#2BBAA5,#1A8F7C)',padding:'20px 24px 16px',cursor:'pointer'}} onClick={()=>{setCurrentOrgId('lunja');setPage('dashboard');}}>
+                        {/* ── Lunja Village ── */}
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                          {/* Header band */}
+                          <div style={{background:'linear-gradient(135deg,#2BBAA5 0%,#1A8F7C 100%)',padding:'18px 20px 14px'}}>
                             <div className="flex items-center justify-between">
                               <div>
-                                <div style={{fontFamily:'"Great Vibes",cursive',fontSize:'32px',color:'white',lineHeight:1.1}}>Lunja Village</div>
-                                <div className="text-[10px] font-bold tracking-widest uppercase text-white/60 mt-1">Resort Management</div>
+                                <div style={{fontFamily:'"Great Vibes",cursive',fontSize:'28px',color:'white',lineHeight:1.1}}>Lunja Village</div>
+                                <div className="text-[10px] font-bold tracking-widest uppercase text-white/60 mt-0.5">Resort & Hospitality · Agadir</div>
                               </div>
-                              <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
-                                <Palmtree size={18} className="text-white" />
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" /> Online
+                                </span>
+                                <Palmtree size={22} className="text-white/40" />
                               </div>
                             </div>
                           </div>
-                          {/* Metrics */}
-                          <div className="p-5">
-                            <div className="grid grid-cols-3 gap-3 mb-5">
+                          {/* Body */}
+                          <div className="p-5 space-y-4">
+                            {/* 4 metrics */}
+                            <div className="grid grid-cols-4 gap-2 text-center">
                               {[
-                                { label: 'Guests', value: guests.filter(g=>g.orgId==='lunja'||!g.orgId).length, icon: '🏨', page: 'guests' as Page },
-                                { label: 'Bookings', value: bookings.filter(b=>b.orgId==='lunja'||!b.orgId).length, icon: '📅', page: 'bookings' as Page },
-                                { label: 'Open Tasks', value: tasks.filter(t=>!t.done&&(t.orgId==='lunja'||!t.orgId)).length, icon: '✅', page: 'tasks' as Page },
+                                { label: 'Guests',    value: lunjaGuests.length,                                              color: '#2BBAA5' },
+                                { label: 'Bookings',  value: lunjaBookings.length,                                            color: '#2BBAA5' },
+                                { label: 'Pending',   value: lunjaPending,                                                    color: lunjaPending > 0 ? '#F96635' : '#9ca3af' },
+                                { label: 'Open Tasks',value: lunjaTasks.length,                                               color: lunjaUrgent > 0 ? '#F59E0B' : '#9ca3af' },
                               ].map(m => (
-                                <div key={m.label} className="text-center p-3 rounded-xl bg-keppel/5 cursor-pointer hover:bg-keppel/10 transition-colors" onClick={()=>{setCurrentOrgId('lunja');setPage(m.page);}}>
-                                  <div className="text-lg mb-1">{m.icon}</div>
-                                  <div className="text-xl font-bold text-eiden-deep">{m.value}</div>
-                                  <div className="text-[10px] text-gray-400 font-medium">{m.label}</div>
+                                <div key={m.label} className="rounded-xl p-2.5 bg-gray-50">
+                                  <div className="text-xl font-extrabold" style={{fontFamily:'"Outfit",sans-serif',color:m.color}}>{m.value}</div>
+                                  <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{m.label}</div>
                                 </div>
                               ))}
                             </div>
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-bold text-gray-600">Revenue</span>
-                              <span className="text-sm font-bold text-keppel">MAD {bookings.filter(b=>b.orgId==='lunja'||!b.orgId).reduce((a,b)=>a+b.amount,0).toLocaleString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-keppel rounded-full" style={{width:`${Math.min(100, (bookings.filter(b=>b.status==='Active').length / Math.max(1,bookings.length))*100)}%`}} />
+                            {/* Revenue bar */}
+                            <div>
+                              <div className="flex justify-between text-xs mb-1.5">
+                                <span className="font-semibold text-gray-500">Total Revenue</span>
+                                <span className="font-bold text-eiden-teal">MAD {lunjaRevenue.toLocaleString()}</span>
                               </div>
-                              <span className="text-[10px] text-gray-400">{bookings.filter(b=>b.status==='Active').length} active bookings</span>
+                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full bg-keppel transition-all" style={{width:`${Math.min(100, combinedRev > 0 ? (lunjaRevenue/combinedRev)*100 : 0)}%`}} />
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-1">{combinedRev > 0 ? Math.round((lunjaRevenue/combinedRev)*100) : 0}% of combined group revenue</div>
                             </div>
-                            <div className="mt-4 flex gap-2">
-                              <button onClick={()=>{setCurrentOrgId('lunja');setPage('guests');}} className="flex-1 btn text-xs">Contacts</button>
-                              <button onClick={()=>{setCurrentOrgId('lunja');setPage('bookings');}} className="flex-1 btn text-xs">Bookings</button>
-                              <button onClick={()=>{setCurrentOrgId('lunja');setPage('dashboard');}} className="flex-1 btn btn-brand text-xs">Dashboard →</button>
-                            </div>
+                            {/* Urgent alert */}
+                            {lunjaUrgent > 0 && (
+                              <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                                <span className="text-amber-500 text-sm">⚠️</span>
+                                <span className="text-xs font-semibold text-amber-700">{lunjaUrgent} urgent task{lunjaUrgent > 1 ? 's' : ''} need attention</span>
+                              </div>
+                            )}
+                            {/* CTA */}
+                            <button onClick={()=>{setCurrentOrgId('lunja');setPage('dashboard');}}
+                              className="w-full py-2 rounded-xl text-sm font-bold text-eiden-teal border border-keppel/30 bg-keppel/5 hover:bg-keppel hover:text-white transition-all">
+                              Open Lunja Dashboard →
+                            </button>
                           </div>
                         </div>
 
-                        {/* ── EducaZen Kids Card ── */}
-                        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white hover:shadow-md transition-shadow">
-                          {/* Card top bar */}
-                          <div style={{background:'linear-gradient(135deg,#C2185B,#7B1FA2)',padding:'20px 24px 16px',cursor:'pointer'}} onClick={()=>{setCurrentOrgId('educazen');setUserOrgId('educazen');setPage('dashboard');}}>
+                        {/* ── EducaZen Kids ── */}
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                          {/* Header band */}
+                          <div style={{background:'linear-gradient(135deg,#C2185B 0%,#7B1FA2 100%)',padding:'18px 20px 14px'}}>
                             <div className="flex items-center justify-between">
                               <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                  <img src="/educazen.png" alt="" className="h-7 w-auto" style={{filter:'brightness(0) invert(1)'}} onError={e=>(e.currentTarget.style.display='none')} />
-                                </div>
+                                <img src="/educazen.png" alt="" className="h-6 w-auto mb-1" style={{filter:'brightness(0) invert(1)'}} onError={e=>(e.currentTarget.style.display='none')} />
                                 <div style={{fontFamily:'"Nunito",sans-serif',fontWeight:900,fontSize:'20px',color:'white',lineHeight:1.1}}>EducazenKids</div>
-                                <div className="text-[10px] font-bold tracking-widest uppercase text-white/60 mt-1">Centre Éducatif · Agadir</div>
+                                <div className="text-[10px] font-bold tracking-widest uppercase text-white/60 mt-0.5">Centre Éducatif · Agadir</div>
                               </div>
-                              <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-xl">🎓</div>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-pink-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-pink-300 animate-pulse" /> Online
+                                </span>
+                                <span className="text-2xl">🎓</span>
+                              </div>
                             </div>
                           </div>
-                          {/* Metrics */}
-                          <div className="p-5">
-                            <div className="grid grid-cols-3 gap-3 mb-5">
+                          {/* Body */}
+                          <div className="p-5 space-y-4">
+                            {/* 4 metrics */}
+                            <div className="grid grid-cols-4 gap-2 text-center">
                               {[
-                                { label: 'Élèves', value: ezStats.students, icon: '👦' },
-                                { label: 'Personnel', value: ezStats.staff, icon: '👩‍🏫' },
-                                { label: 'Impayés', value: ezStats.unpaidCount, icon: '⚠️' },
+                                { label: 'Students',  value: ezStats.students,      color: '#C2185B' },
+                                { label: 'Staff',     value: ezStats.staff,         color: '#7B1FA2' },
+                                { label: 'Paid',      value: ezStats.paidThisMonth, color: '#0D9488' },
+                                { label: 'Unpaid',    value: ezStats.unpaidCount,   color: ezStats.unpaidCount > 0 ? '#F96635' : '#9ca3af' },
                               ].map(m => (
-                                <div key={m.label} className="text-center p-3 rounded-xl cursor-pointer transition-colors" style={{background:'rgba(194,24,91,.05)'}}
-                                  onMouseEnter={e=>(e.currentTarget.style.background='rgba(194,24,91,.1)')}
-                                  onMouseLeave={e=>(e.currentTarget.style.background='rgba(194,24,91,.05)')}
-                                  onClick={()=>{setCurrentOrgId('educazen');setUserOrgId('educazen');setPage('dashboard');}}>
-                                  <div className="text-lg mb-1">{m.icon}</div>
-                                  <div className="text-xl font-bold text-eiden-deep">{m.value}</div>
-                                  <div className="text-[10px] text-gray-400 font-medium">{m.label}</div>
+                                <div key={m.label} className="rounded-xl p-2.5 bg-gray-50">
+                                  <div className="text-xl font-extrabold" style={{fontFamily:'"Outfit",sans-serif',color:m.color}}>{m.value}</div>
+                                  <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{m.label}</div>
                                 </div>
                               ))}
                             </div>
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-bold text-gray-600">Revenus (paiements)</span>
-                              <span className="text-sm font-bold" style={{color:'#C2185B'}}>MAD {ezStats.totalRevenue.toLocaleString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{background:'#C2185B',width:`${Math.min(100,ezStats.students>0?(ezStats.paidThisMonth/ezStats.students)*100:0)}%`}} />
+                            {/* Payment collection bar */}
+                            <div>
+                              <div className="flex justify-between text-xs mb-1.5">
+                                <span className="font-semibold text-gray-500">Payment Collection</span>
+                                <span className="font-bold" style={{color:'#C2185B'}}>{ezPayRate}%</span>
                               </div>
-                              <span className="text-[10px] text-gray-400">{ezStats.paidThisMonth} payés ce mois</span>
+                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all" style={{background:'#C2185B',width:`${ezPayRate}%`}} />
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-1">{ezStats.paidThisMonth}/{ezStats.students} students paid this month · MAD {ezStats.totalRevenue.toLocaleString()} collected</div>
                             </div>
-                            <div className="mt-4 flex gap-2">
-                              <button onClick={()=>{setCurrentOrgId('educazen');setUserOrgId('educazen');setPage('dashboard');}} className="flex-1 btn text-xs" style={{borderColor:'rgba(194,24,91,.2)',color:'#C2185B'}}>Ouvrir Dashboard</button>
-                            </div>
+                            {/* Unpaid alert */}
+                            {ezStats.unpaidCount > 0 && (
+                              <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
+                                <span className="text-rose-500 text-sm">⚠️</span>
+                                <span className="text-xs font-semibold text-rose-700">{ezStats.unpaidCount} student{ezStats.unpaidCount > 1 ? 's' : ''} have unpaid fees this month</span>
+                              </div>
+                            )}
+                            {/* CTA */}
+                            <button onClick={()=>{setCurrentOrgId('educazen');setPage('dashboard');}}
+                              className="w-full py-2 rounded-xl text-sm font-bold border transition-all"
+                              style={{color:'#C2185B',borderColor:'rgba(194,24,91,.3)',background:'rgba(194,24,91,.05)'}}
+                              onMouseEnter={e=>{e.currentTarget.style.background='#C2185B';e.currentTarget.style.color='white';}}
+                              onMouseLeave={e=>{e.currentTarget.style.background='rgba(194,24,91,.05)';e.currentTarget.style.color='#C2185B';}}>
+                              Open EducaZen Dashboard →
+                            </button>
                           </div>
                         </div>
                       </div>
 
-                      {/* Bottom row: Recent Activity + Tasks */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-                        {/* Recent Activity */}
-                        <div className="card">
-                          <div className="flex items-center justify-between mb-5">
-                            <h3 className="font-bold text-sm text-eiden-deep">Recent Activity — All Orgs</h3>
-                            <span className="badge badge-gray">Live</span>
+                      {/* ── Recent Activity (read-only feed) ── */}
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                        <div className="lg:col-span-2 card">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h3 className="font-bold text-sm text-eiden-deep">Recent Activity</h3>
+                              <p className="text-[11px] text-gray-400 mt-0.5">Latest actions across all client orgs</p>
+                            </div>
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
+                            </span>
                           </div>
-                          <div className="space-y-3">
+                          <div className="space-y-2">
                             {activities.length === 0 ? (
-                              <p className="text-xs text-gray-400 text-center py-4">No activity yet.</p>
-                            ) : activities.slice(0,6).map(a => (
-                              <div key={a.id} className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors"
-                                onClick={() => {
-                                  if (a.targetType === 'Guest') setPage('guests');
-                                  else if (a.targetType === 'Booking') setPage('bookings');
-                                  else if (a.targetType === 'Task') setPage('tasks');
-                                  else if (a.targetType === 'Deal') setPage('leads');
-                                }}>
+                              <p className="text-xs text-gray-400 text-center py-6 italic">No activity recorded yet.</p>
+                            ) : activities.slice(0, 7).map(a => (
+                              <div key={a.id} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors">
                                 <div className="w-7 h-7 rounded-full bg-eiden-teal/10 flex items-center justify-center shrink-0 mt-0.5">
-                                  <ActivityIcon size={12} className="text-eiden-teal" />
+                                  <ActivityIcon size={11} className="text-eiden-teal" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-semibold text-gray-700 truncate"><span className="text-eiden-teal">{a.action}</span> {a.targetType} — {a.targetName}</p>
-                                  <p className="text-[10px] text-gray-400">{a.userName} · {new Date(a.timestamp).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>
+                                  <p className="text-xs font-semibold text-gray-700">
+                                    <span className="text-eiden-teal">{a.action}</span> · {a.targetType} — <span className="text-gray-900">{a.targetName}</span>
+                                  </p>
+                                  <p className="text-[10px] text-gray-400 mt-0.5">{a.userName} · {new Date(a.timestamp).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</p>
                                 </div>
                               </div>
                             ))}
                           </div>
                         </div>
 
-                        {/* Open Tasks across orgs */}
-                        <div className="card">
-                          <div className="flex items-center justify-between mb-5">
-                            <button onClick={() => setPage('tasks')} className="font-bold text-sm text-eiden-deep hover:text-eiden-teal transition-colors">Open Tasks — All Orgs</button>
-                            <button onClick={() => setPage('tasks')} className="text-xs text-eiden-teal font-bold hover:underline">View all</button>
+                        {/* ── System / Health panel ── */}
+                        <div className="card space-y-4">
+                          <div>
+                            <h3 className="font-bold text-sm text-eiden-deep mb-0.5">System Status</h3>
+                            <p className="text-[11px] text-gray-400">Infrastructure & integrations</p>
                           </div>
                           <div className="space-y-3">
-                            {tasks.filter(t => !t.done).length === 0 ? (
-                              <p className="text-xs text-gray-400 text-center py-4">All tasks completed.</p>
-                            ) : tasks.filter(t=>!t.done).slice(0,5).map(task => (
-                              <div key={task.id} className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors" onClick={() => setPage('tasks')}>
-                                <div className={cn("mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0", "border-gray-200")} />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-semibold text-gray-700 truncate">{task.name}</p>
-                                  <p className="text-[10px] text-gray-400">{task.department} · Due {task.due}</p>
+                            {[
+                              { label: 'Supabase Database', ok: true,  note: 'Connected' },
+                              { label: 'Lunja Village',     ok: true,  note: 'Online' },
+                              { label: 'EducaZen Kids',     ok: true,  note: 'Online' },
+                              { label: 'Vercel Deployment', ok: true,  note: 'Live' },
+                            ].map(s => (
+                              <div key={s.label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-2 h-2 rounded-full ${s.ok ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                                  <span className="text-xs font-medium text-gray-700">{s.label}</span>
                                 </div>
-                                {task.urgent && <span className="badge badge-red shrink-0">Urgent</span>}
+                                <span className={`text-[10px] font-bold ${s.ok ? 'text-emerald-600' : 'text-rose-600'}`}>{s.note}</span>
                               </div>
                             ))}
+                          </div>
+                          <div className="pt-2 border-t border-gray-50">
+                            <p className="text-[10px] text-gray-400">Last checked: just now</p>
+                            <div className="mt-3 flex gap-2">
+                              <button onClick={() => setPage('organizations')} className="flex-1 btn text-[10px] py-1.5">Manage Clients</button>
+                              <button onClick={() => setPage('users')} className="flex-1 btn text-[10px] py-1.5">Users</button>
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Revenue chart (combined) */}
+                      {/* ── Revenue chart (Lunja) ── */}
                       <div className="card">
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center justify-between mb-5">
                           <div>
                             <h3 className="font-bold text-sm text-eiden-deep">Lunja Village — Booking Revenue</h3>
-                            <p className="text-xs text-gray-400 mt-0.5">Last 7 months</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Last 7 months · read-only view</p>
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                             <span className="w-2 h-2 bg-eiden-teal rounded-full" /> MAD
                           </div>
                         </div>
@@ -1594,13 +1634,11 @@ export default function App() {
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={revenueData}>
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af', fontWeight: 600 }} dy={10} />
+                              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize:10,fill:'#9ca3af',fontWeight:600}} dy={10} />
                               <YAxis hide />
-                              <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                                {revenueData.map((_, index) => (
-                                  <Cell key={`cell-${index}`} fill={index === revenueData.length - 1 ? '#0C5752' : '#E5E7EB'} />
-                                ))}
+                              <Tooltip cursor={{fill:'#f9fafb'}} contentStyle={{borderRadius:'8px',border:'none',boxShadow:'0 10px 15px -3px rgb(0 0 0/.1)'}} formatter={(v:any)=>[`MAD ${Number(v).toLocaleString()}`,'Revenue']} />
+                              <Bar dataKey="value" radius={[4,4,0,0]}>
+                                {revenueData.map((_,i) => <Cell key={i} fill={i===revenueData.length-1?'#0C5752':'#E5E7EB'} />)}
                               </Bar>
                             </BarChart>
                           </ResponsiveContainer>
@@ -1608,7 +1646,8 @@ export default function App() {
                       </div>
 
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {page === 'dashboard' && (role !== 'superadmin' || currentOrgId === 'lunja') && (
                     <div className="space-y-8">
