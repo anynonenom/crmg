@@ -227,7 +227,14 @@ create policy "ez_attendance_ad" on ez_attendance for all using (org_id = get_my
 -- with the actual IDs shown in Authentication → Users):
 -- ================================================================
 
--- EXAMPLE (replace UUIDs after creating users in Dashboard):
+-- FIRST: seed organizations (profiles FK requires these to exist)
+insert into organizations (id, name, slug, email)
+values
+  ('lunja',    'Lunja Village',  'lunja',    'admin@lunja-village.com'),
+  ('educazen', 'EducaZen Kids',  'educazen', 'admin@educazenkids.com')
+on conflict (id) do nothing;
+
+-- THEN: insert profiles (replace UUIDs with the actual IDs from Authentication → Users)
 /*
 insert into profiles (id, role, org_id, display_name) values
   ('<EIDEN-USER-UUID>',   'superadmin', null,        'Super Admin'),
