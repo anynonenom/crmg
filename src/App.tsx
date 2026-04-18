@@ -1015,7 +1015,11 @@ export default function App() {
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isEz ? 'bg-gray-50 border-gray-200' : 'bg-white/10 border-brand-secondary/20'}`}>
                 <Palmtree size={14} className={isEz ? 'text-gray-400' : 'text-brand-secondary'} />
                 <select className={`bg-transparent text-xs font-brand-body focus:outline-none cursor-pointer ${isEz ? 'text-gray-700' : 'text-white'}`}
-                  value={currentOrgId || ''} onChange={e => setCurrentOrgId(e.target.value || null)}>
+                  value={currentOrgId || ''} onChange={e => {
+                    const id = e.target.value || null;
+                    setCurrentOrgId(id);
+                    setPage('dashboard');
+                  }}>
                   <option value="" className="text-ink">All Organizations</option>
                   {organizations.map(org => <option key={org.id} value={org.id} className="text-ink">{org.name}</option>)}
                 </select>
@@ -1268,21 +1272,49 @@ export default function App() {
             )}>
           <div className="mb-8 px-2">
             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
-              {role === 'superadmin' ? 'Global Control' : role === 'admin' ? 'Management' : 'My Stay'}
+              {role === 'superadmin'
+                ? currentOrgId === 'educazen' ? 'EducaZen Kids' : currentOrgId === 'lunja' ? 'Lunja Village' : 'Global Control'
+                : role === 'admin' ? 'Management' : 'My Stay'}
             </div>
             <nav className="space-y-1" onClick={() => setIsMobileMenuOpen(false)}>
               {role === 'superadmin' ? (
-                <>
-                  <SidebarItem icon={LayoutDashboard} label="Super Dashboard" active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
-                  <SidebarItem icon={Palmtree} label="Organizations" active={page === 'organizations'} onClick={() => setPage('organizations')} />
-                  <SidebarItem icon={ArrowUpRight} label="Global Client Board" active={page === 'client-board'} onClick={() => setPage('client-board')} />
-                  <SidebarItem icon={Users} label="Global Contacts" active={page === 'guests'} onClick={() => setPage('guests')} />
-                  <SidebarItem icon={CalendarDays} label="Global Bookings" active={page === 'bookings'} onClick={() => setPage('bookings')} />
-                  <SidebarItem icon={CheckSquare} label="Global Tasks" active={page === 'tasks'} onClick={() => setPage('tasks')} />
-                  <SidebarItem icon={CalendarDays} label="Global Calendar" active={page === 'calendar'} onClick={() => setPage('calendar')} />
-                  <SidebarItem icon={BarChart3} label="Global Revenue" active={page === 'revenue'} onClick={() => setPage('revenue')} />
-                  <SidebarItem icon={Users} label="Global Users" active={page === 'users'} onClick={() => setPage('users')} />
-                </>
+                currentOrgId === 'educazen' ? (
+                  // ── Superadmin viewing EducaZen ──
+                  <>
+                    <button onClick={() => { setCurrentOrgId(null); setPage('dashboard'); }}
+                      className="flex items-center gap-2 text-xs text-gray-400 hover:text-ink mb-3 px-2 py-1 rounded-lg hover:bg-gray-50 w-full transition-colors">
+                      <ChevronRight size={12} className="rotate-180" /> All Organizations
+                    </button>
+                    <SidebarItem icon={LayoutDashboard} label="EducaZen Dashboard" active={true} onClick={() => {}} />
+                  </>
+                ) : currentOrgId === 'lunja' ? (
+                  // ── Superadmin viewing Lunja Village ──
+                  <>
+                    <button onClick={() => { setCurrentOrgId(null); setPage('dashboard'); }}
+                      className="flex items-center gap-2 text-xs text-gray-400 hover:text-ink mb-3 px-2 py-1 rounded-lg hover:bg-gray-50 w-full transition-colors">
+                      <ChevronRight size={12} className="rotate-180" /> All Organizations
+                    </button>
+                    <SidebarItem icon={LayoutDashboard} label="Dashboard" active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
+                    <SidebarItem icon={Users} label="Contacts" active={page === 'guests'} onClick={() => setPage('guests')} />
+                    <SidebarItem icon={CalendarDays} label="Bookings" active={page === 'bookings'} onClick={() => setPage('bookings')} />
+                    <SidebarItem icon={CheckSquare} label="Tasks" active={page === 'tasks'} onClick={() => setPage('tasks')} />
+                    <SidebarItem icon={CalendarDays} label="Calendar" active={page === 'calendar'} onClick={() => setPage('calendar')} />
+                    <SidebarItem icon={BarChart3} label="Revenue" active={page === 'revenue'} onClick={() => setPage('revenue')} />
+                  </>
+                ) : (
+                  // ── Superadmin global view ──
+                  <>
+                    <SidebarItem icon={LayoutDashboard} label="Super Dashboard" active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
+                    <SidebarItem icon={Palmtree} label="Organizations" active={page === 'organizations'} onClick={() => setPage('organizations')} />
+                    <SidebarItem icon={ArrowUpRight} label="Global Client Board" active={page === 'client-board'} onClick={() => setPage('client-board')} />
+                    <SidebarItem icon={Users} label="Global Contacts" active={page === 'guests'} onClick={() => setPage('guests')} />
+                    <SidebarItem icon={CalendarDays} label="Global Bookings" active={page === 'bookings'} onClick={() => setPage('bookings')} />
+                    <SidebarItem icon={CheckSquare} label="Global Tasks" active={page === 'tasks'} onClick={() => setPage('tasks')} />
+                    <SidebarItem icon={CalendarDays} label="Global Calendar" active={page === 'calendar'} onClick={() => setPage('calendar')} />
+                    <SidebarItem icon={BarChart3} label="Global Revenue" active={page === 'revenue'} onClick={() => setPage('revenue')} />
+                    <SidebarItem icon={Users} label="Global Users" active={page === 'users'} onClick={() => setPage('users')} />
+                  </>
+                )
               ) : role === 'admin' ? (
                 userOrgId === 'educazen' ? (
                   // EducaZen admin sidebar — single entry point
@@ -1333,17 +1365,17 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {/* ─── EducaZen Dashboard (admin + parent) ─── */}
-              {userOrgId === 'educazen' ? (
+              {/* ─── EducaZen Dashboard (admin, parent, or superadmin scoped to educazen) ─── */}
+              {(userOrgId === 'educazen' || (role === 'superadmin' && currentOrgId === 'educazen')) ? (
                 <EducazenDashboard
-                  role={role === 'client' ? 'parent' : 'admin'}
+                  role="admin"
                   userEmail={user?.email}
                   orgId="educazen"
                   onNotify={createNotification}
                 />
               ) : role === 'admin' || role === 'superadmin' ? (
                 <>
-                  {page === 'dashboard' && role === 'superadmin' && (
+                  {page === 'dashboard' && role === 'superadmin' && !currentOrgId && (
                     /* ═══════════════════════════════════════════════════
                        EIDEN GROUP — GLOBAL OVERVIEW (Super Admin Only)
                     ═══════════════════════════════════════════════════ */
@@ -1393,7 +1425,7 @@ export default function App() {
                         {/* ── Lunja Village Card ── */}
                         <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white hover:shadow-md transition-shadow">
                           {/* Card top bar */}
-                          <div style={{background:'linear-gradient(135deg,#2BBAA5,#1A8F7C)',padding:'20px 24px 16px',cursor:'pointer'}} onClick={()=>{setCurrentOrgId('lunja');setPage('guests');}}>
+                          <div style={{background:'linear-gradient(135deg,#2BBAA5,#1A8F7C)',padding:'20px 24px 16px',cursor:'pointer'}} onClick={()=>{setCurrentOrgId('lunja');setPage('dashboard');}}>
                             <div className="flex items-center justify-between">
                               <div>
                                 <div style={{fontFamily:'"Great Vibes",cursive',fontSize:'32px',color:'white',lineHeight:1.1}}>Lunja Village</div>
@@ -1432,7 +1464,7 @@ export default function App() {
                             <div className="mt-4 flex gap-2">
                               <button onClick={()=>{setCurrentOrgId('lunja');setPage('guests');}} className="flex-1 btn text-xs">Contacts</button>
                               <button onClick={()=>{setCurrentOrgId('lunja');setPage('bookings');}} className="flex-1 btn text-xs">Bookings</button>
-                              <button onClick={()=>{setCurrentOrgId('lunja');setPage('revenue');}} className="flex-1 btn btn-brand text-xs">Revenue</button>
+                              <button onClick={()=>{setCurrentOrgId('lunja');setPage('dashboard');}} className="flex-1 btn btn-brand text-xs">Dashboard →</button>
                             </div>
                           </div>
                         </div>
@@ -1573,10 +1605,10 @@ export default function App() {
                     </div>
                   )}
 
-                  {page === 'dashboard' && role !== 'superadmin' && (
+                  {page === 'dashboard' && (role !== 'superadmin' || currentOrgId === 'lunja') && (
                     <div className="space-y-8">
                       <div>
-                        <h1 className="text-lg sm:text-2xl font-bold text-ink">Good morning, Team</h1>
+                        <h1 className="text-lg sm:text-2xl font-bold text-ink">{role === 'superadmin' ? 'Lunja Village — Overview' : 'Good morning, Team'}</h1>
                         <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · Lunja Village Resort</p>
                       </div>
 
