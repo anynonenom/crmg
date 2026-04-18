@@ -488,7 +488,12 @@ export default function App() {
 
     // ── LUNJA VILLAGE portal (/lunja-village) — ADMIN ONLY ──────────
     if (loginPortal === 'lunja') {
-      // Lunja admin via Supabase orgs table
+      // Hardcoded fallback (always works)
+      if (loginEmail === 'admin@lunja.com' && loginPassword === 'lunja123') {
+        doLogin({ uid: 'lunja-admin', email: loginEmail, displayName: 'Lunja Village Admin', role: 'admin', orgId: 'lunja' }, 'dashboard');
+        return;
+      }
+      // Also check Supabase orgs table (for custom org credentials)
       try {
         const { data } = await supabase.from('organizations').select('*').eq('email', loginEmail).eq('id', 'lunja').limit(1);
         if (data && data.length > 0 && data[0].password === loginPassword) {
@@ -1177,7 +1182,7 @@ export default function App() {
                     <form onSubmit={handleLogin}>
                       <div style={{marginBottom:'20px'}}>
                         <label style={{display:'block',fontFamily:'"DM Sans",sans-serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.38)',marginBottom:'8px'}}>Email</label>
-                        <input type="email" placeholder="admin@lunja.com" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} required
+                        <input type="email" placeholder="admin@lunja.com" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required
                           style={{width:'100%',padding:'14px 18px',fontFamily:'"DM Sans",sans-serif',fontSize:'14px',color:'#1A1208',background:'#FDF8EE',border:'1.5px solid rgba(43,186,165,.15)',borderRadius:'14px',outline:'none',transition:'all .25s'}}
                           onFocus={e=>{e.currentTarget.style.borderColor='#2BBAA5';e.currentTarget.style.background='#FFFFFF';e.currentTarget.style.boxShadow='0 0 0 4px rgba(43,186,165,.1)';}}
                           onBlur={e=>{e.currentTarget.style.borderColor='rgba(43,186,165,.15)';e.currentTarget.style.background='#FDF8EE';e.currentTarget.style.boxShadow='none';}}
