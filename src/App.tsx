@@ -588,9 +588,9 @@ export default function App() {
     if (!user || userRole !== 'superadmin') return;
     
     const orgs = [
-      { id: 'lunja', name: 'Lunja Village', slug: 'lunja', email: 'lunja@eiden-group.com', password: 'password123' },
-      { id: 'eiden', name: 'Eiden Group', slug: 'eiden', email: 'eiden@eiden-group.com', password: 'password123' },
-      { id: 'educazen', name: 'EducazenKids', slug: 'educazen', email: 'admin@educazenkids.com', password: 'educazen123' }
+      { id: 'lunja',    name: 'Lunja Village', slug: 'lunja',    email: 'admin@lunja-village.com' },
+      { id: 'eiden',    name: 'Eiden Group',   slug: 'eiden',    email: 'admin@eiden-group.com'   },
+      { id: 'educazen', name: 'EducaZen Kids', slug: 'educazen', email: 'admin@educazenkids.com'  }
     ];
 
     for (const org of orgs) {

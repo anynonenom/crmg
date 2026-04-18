@@ -79,6 +79,7 @@ alter table leads           enable row level security;
 alter table activities      enable row level security;
 alter table notifications   enable row level security;
 alter table reminders       enable row level security;
+alter table clients         enable row level security;
 alter table ez_students     enable row level security;
 alter table ez_classes      enable row level security;
 alter table ez_staff        enable row level security;
@@ -166,7 +167,16 @@ create policy "notif_admin"      on notifications for all using (org_id = get_my
 
 
 -- ================================================================
--- STEP 7: EducaZen tables (snake_case org_id)
+-- STEP 7: Clients table (Client Board — snake_case org_id)
+-- ================================================================
+drop policy if exists "clients_superadmin" on clients;
+drop policy if exists "clients_admin"      on clients;
+create policy "clients_superadmin" on clients for all using (get_my_role() = 'superadmin');
+create policy "clients_admin"      on clients for all using (org_id = get_my_org_id());
+
+
+-- ================================================================
+-- STEP 8: EducaZen tables (snake_case org_id)
 -- ================================================================
 
 -- ez_students
