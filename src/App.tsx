@@ -146,8 +146,8 @@ const PIPELINE_STAGES = [
 
 // --- Components ---
 
-const StatCard = ({ title, value, change, trend }: { title: string, value: string, change: string, trend: 'up' | 'down' | 'neutral' }) => (
-  <div className="card flex flex-col justify-between">
+const StatCard = ({ title, value, change, trend, onClick }: { title: string, value: string, change: string, trend: 'up' | 'down' | 'neutral', onClick?: () => void }) => (
+  <div className={cn("card flex flex-col justify-between transition-all duration-150", onClick && "cursor-pointer hover:shadow-md hover:-translate-y-0.5")} onClick={onClick}>
     <div>
       <div className="text-[10px] sm:text-xs text-gray-500 font-medium mb-1">{title}</div>
       <div className="text-lg sm:text-2xl font-bold text-ink leading-tight">{value}</div>
@@ -486,13 +486,8 @@ export default function App() {
       return;
     }
 
-    // ── LUNJA VILLAGE portal (/lunja-village) ────────────────────────
+    // ── LUNJA VILLAGE portal (/lunja-village) — ADMIN ONLY ──────────
     if (loginPortal === 'lunja') {
-      // Lunja guest/client
-      if (loginEmail === 'client@eiden-group.com' && loginPassword === 'client123') {
-        doLogin({ uid: 'client', email: loginEmail, displayName: 'Lunja Client', role: 'client', orgId: 'lunja' }, 'client-overview');
-        return;
-      }
       // Lunja admin via Supabase orgs table
       try {
         const { data } = await supabase.from('organizations').select('*').eq('email', loginEmail).eq('id', 'lunja').limit(1);
@@ -505,14 +500,10 @@ export default function App() {
       return;
     }
 
-    // ── EDUCAZEN portal (/educazenkids) ──────────────────────────────
+    // ── EDUCAZEN portal (/educazenkids) — ADMIN ONLY ─────────────────
     if (loginPortal === 'educazen') {
       if (loginEmail === 'admin@educazenkids.com' && loginPassword === 'educazen123') {
         doLogin({ uid: 'educazen-admin', email: loginEmail, displayName: 'EducaZen Admin', role: 'admin', orgId: 'educazen' }, 'dashboard');
-        return;
-      }
-      if (loginEmail === 'parent@educazen.com' && loginPassword === 'parent123') {
-        doLogin({ uid: 'educazen-parent', email: loginEmail, displayName: 'Parent EducaZen', role: 'client', orgId: 'educazen' }, 'dashboard');
         return;
       }
       setLoginError('Identifiants incorrects.');
@@ -1050,7 +1041,7 @@ export default function App() {
                   </button>
 
                   {showNotifDropdown && (
-                    <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                    <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
                         <span className="font-bold text-sm text-gray-800">Notifications</span>
                         <div className="flex items-center gap-2">
@@ -1150,7 +1141,18 @@ export default function App() {
                         onMouseLeave={e=>{e.currentTarget.style.background='#122620';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 18px rgba(0,0,0,.22)';}}
                       >Access →</button>
                     </form>
-                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(12,87,82,.1)',textAlign:'center',fontFamily:'"Cormorant Garamond",serif',fontSize:'10.5px',fontWeight:600,letterSpacing:'4px',textTransform:'uppercase',color:'rgba(10,15,12,.16)'}}>© 2026 EIDEN Group</div>
+                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(12,87,82,.1)',textAlign:'center'}}>
+                      <p style={{fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(10,15,12,.16)',marginBottom:'14px'}}>Other Portals</p>
+                      <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
+                        {([['lunja','/lunja-village','Lunja Village','#2BBAA5'],['educazen','/educazenkids','EducaZen Kids','#C2185B']] as const).map(([portal,path,label,color])=>(
+                          <button key={portal} onClick={()=>{setLoginPortal(portal as any);setLoginEmail('');setLoginPassword('');setLoginError('');window.history.pushState({},'',path);}}
+                            style={{padding:'7px 14px',borderRadius:'2px',border:`1px solid ${color}30`,background:`${color}0D`,color,fontFamily:'"Outfit",sans-serif',fontWeight:600,fontSize:'11px',letterSpacing:'2px',textTransform:'uppercase',cursor:'pointer',transition:'all .2s'}}
+                            onMouseEnter={e=>{e.currentTarget.style.background=`${color}22`;e.currentTarget.style.borderColor=`${color}80`;}}
+                            onMouseLeave={e=>{e.currentTarget.style.background=`${color}0D`;e.currentTarget.style.borderColor=`${color}30`;}}
+                          >{label}</button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1203,7 +1205,18 @@ export default function App() {
                         onMouseLeave={e=>{e.currentTarget.style.background='#2BBAA5';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 18px rgba(43,186,165,.3)';}}
                       >Access →</button>
                     </form>
-                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(43,186,165,.1)',textAlign:'center',fontFamily:'"DM Sans",sans-serif',fontSize:'10.5px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.18)'}}>© 2026 Lunja Village</div>
+                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(43,186,165,.1)',textAlign:'center'}}>
+                      <p style={{fontFamily:'"DM Sans",sans-serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(26,18,8,.18)',marginBottom:'14px'}}>Other Portals</p>
+                      <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
+                        {([['eiden','/','EIDEN Group','#0C5752'],['educazen','/educazenkids','EducaZen Kids','#C2185B']] as const).map(([portal,path,label,color])=>(
+                          <button key={portal} onClick={()=>{setLoginPortal(portal as any);setLoginEmail('');setLoginPassword('');setLoginError('');window.history.pushState({},'',path);}}
+                            style={{padding:'7px 14px',borderRadius:'14px',border:`1px solid ${color}30`,background:`${color}0D`,color,fontFamily:'"DM Sans",sans-serif',fontWeight:600,fontSize:'11px',letterSpacing:'1.5px',cursor:'pointer',transition:'all .2s'}}
+                            onMouseEnter={e=>{e.currentTarget.style.background=`${color}22`;e.currentTarget.style.borderColor=`${color}80`;}}
+                            onMouseLeave={e=>{e.currentTarget.style.background=`${color}0D`;e.currentTarget.style.borderColor=`${color}30`;}}
+                          >{label}</button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1259,7 +1272,18 @@ export default function App() {
                         onMouseLeave={e=>{e.currentTarget.style.background='#C2185B';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 18px rgba(194,24,91,.28)';}}
                       >Accéder →</button>
                     </form>
-                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(194,24,91,.07)',textAlign:'center',fontFamily:'"Cormorant Garamond",serif',fontSize:'10.5px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(45,45,58,.2)'}}>© 2026 EducazenKids</div>
+                    <div style={{marginTop:'28px',paddingTop:'22px',borderTop:'1px solid rgba(194,24,91,.07)',textAlign:'center'}}>
+                      <p style={{fontFamily:'"Cormorant Garamond",serif',fontSize:'10px',fontWeight:600,letterSpacing:'3px',textTransform:'uppercase',color:'rgba(45,45,58,.2)',marginBottom:'14px'}}>Other Portals</p>
+                      <div style={{display:'flex',gap:'8px',justifyContent:'center'}}>
+                        {([['eiden','/','EIDEN Group','#0C5752'],['lunja','/lunja-village','Lunja Village','#2BBAA5']] as const).map(([portal,path,label,color])=>(
+                          <button key={portal} onClick={()=>{setLoginPortal(portal as any);setLoginEmail('');setLoginPassword('');setLoginError('');window.history.pushState({},'',path);}}
+                            style={{padding:'7px 14px',borderRadius:'12px',border:`1px solid ${color}30`,background:`${color}0D`,color,fontFamily:'"Quicksand",sans-serif',fontWeight:700,fontSize:'11px',letterSpacing:'1px',cursor:'pointer',transition:'all .2s'}}
+                            onMouseEnter={e=>{e.currentTarget.style.background=`${color}22`;e.currentTarget.style.borderColor=`${color}80`;}}
+                            onMouseLeave={e=>{e.currentTarget.style.background=`${color}0D`;e.currentTarget.style.borderColor=`${color}30`;}}
+                          >{label}</button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1382,12 +1406,16 @@ export default function App() {
                       {/* Global KPI strip */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {[
-                          { label: 'Organizations', value: '2', sub: 'Active', color: '#0C5752', bg: 'rgba(12,87,82,.06)' },
-                          { label: 'Total Bookings', value: bookings.length.toString(), sub: `${bookings.filter(b=>b.status==='Pending').length} pending`, color: '#2BBAA5', bg: 'rgba(43,186,165,.06)' },
-                          { label: 'Students Enrolled', value: ezStats.students.toString(), sub: `${ezStats.staff} staff`, color: '#C2185B', bg: 'rgba(194,24,91,.06)' },
-                          { label: 'Combined Revenue', value: `${(bookings.reduce((a,b)=>a+b.amount,0)+ezStats.totalRevenue).toLocaleString()}`, sub: 'MAD · all orgs', color: '#d7bb93', bg: 'rgba(215,187,147,.08)' },
+                          { label: 'Organizations', value: '2', sub: 'Active', color: '#0C5752', bg: 'rgba(12,87,82,.06)', page: 'organizations' as Page },
+                          { label: 'Total Bookings', value: bookings.length.toString(), sub: `${bookings.filter(b=>b.status==='Pending').length} pending`, color: '#2BBAA5', bg: 'rgba(43,186,165,.06)', page: 'bookings' as Page },
+                          { label: 'Students Enrolled', value: ezStats.students.toString(), sub: `${ezStats.staff} staff`, color: '#C2185B', bg: 'rgba(194,24,91,.06)', page: null },
+                          { label: 'Combined Revenue', value: `${(bookings.reduce((a,b)=>a+b.amount,0)+ezStats.totalRevenue).toLocaleString()}`, sub: 'MAD · all orgs', color: '#d7bb93', bg: 'rgba(215,187,147,.08)', page: 'revenue' as Page },
                         ].map(k => (
-                          <div key={k.label} className="rounded-xl p-4 border border-gray-100" style={{background:k.bg}}>
+                          <div key={k.label}
+                            className="rounded-xl p-4 border border-gray-100 transition-all duration-150 cursor-pointer hover:shadow-md hover:-translate-y-0.5"
+                            style={{background:k.bg}}
+                            onClick={() => k.page && setPage(k.page)}
+                          >
                             <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{color:k.color,opacity:.7}}>{k.label}</div>
                             <div className="text-2xl font-bold text-eiden-deep" style={{fontFamily:'"Outfit",sans-serif'}}>{k.value}</div>
                             <div className="text-[11px] text-gray-400 mt-0.5">{k.sub}</div>
@@ -1399,9 +1427,9 @@ export default function App() {
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
                         {/* ── Lunja Village Card ── */}
-                        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+                        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white hover:shadow-md transition-shadow">
                           {/* Card top bar */}
-                          <div style={{background:'linear-gradient(135deg,#2BBAA5,#1A8F7C)',padding:'20px 24px 16px'}}>
+                          <div style={{background:'linear-gradient(135deg,#2BBAA5,#1A8F7C)',padding:'20px 24px 16px',cursor:'pointer'}} onClick={()=>{setCurrentOrgId('lunja');setPage('guests');}}>
                             <div className="flex items-center justify-between">
                               <div>
                                 <div style={{fontFamily:'"Great Vibes",cursive',fontSize:'32px',color:'white',lineHeight:1.1}}>Lunja Village</div>
@@ -1416,11 +1444,11 @@ export default function App() {
                           <div className="p-5">
                             <div className="grid grid-cols-3 gap-3 mb-5">
                               {[
-                                { label: 'Guests', value: guests.filter(g=>g.orgId==='lunja'||!g.orgId).length, icon: '🏨' },
-                                { label: 'Bookings', value: bookings.filter(b=>b.orgId==='lunja'||!b.orgId).length, icon: '📅' },
-                                { label: 'Open Tasks', value: tasks.filter(t=>!t.done&&(t.orgId==='lunja'||!t.orgId)).length, icon: '✅' },
+                                { label: 'Guests', value: guests.filter(g=>g.orgId==='lunja'||!g.orgId).length, icon: '🏨', page: 'guests' as Page },
+                                { label: 'Bookings', value: bookings.filter(b=>b.orgId==='lunja'||!b.orgId).length, icon: '📅', page: 'bookings' as Page },
+                                { label: 'Open Tasks', value: tasks.filter(t=>!t.done&&(t.orgId==='lunja'||!t.orgId)).length, icon: '✅', page: 'tasks' as Page },
                               ].map(m => (
-                                <div key={m.label} className="text-center p-3 rounded-xl bg-keppel/5">
+                                <div key={m.label} className="text-center p-3 rounded-xl bg-keppel/5 cursor-pointer hover:bg-keppel/10 transition-colors" onClick={()=>{setCurrentOrgId('lunja');setPage(m.page);}}>
                                   <div className="text-lg mb-1">{m.icon}</div>
                                   <div className="text-xl font-bold text-eiden-deep">{m.value}</div>
                                   <div className="text-[10px] text-gray-400 font-medium">{m.label}</div>
@@ -1446,9 +1474,9 @@ export default function App() {
                         </div>
 
                         {/* ── EducaZen Kids Card ── */}
-                        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
+                        <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white hover:shadow-md transition-shadow">
                           {/* Card top bar */}
-                          <div style={{background:'linear-gradient(135deg,#C2185B,#7B1FA2)',padding:'20px 24px 16px'}}>
+                          <div style={{background:'linear-gradient(135deg,#C2185B,#7B1FA2)',padding:'20px 24px 16px',cursor:'pointer'}} onClick={()=>{setCurrentOrgId('educazen');setUserOrgId('educazen');setPage('dashboard');}}>
                             <div className="flex items-center justify-between">
                               <div>
                                 <div className="flex items-center gap-2 mb-1">
@@ -1468,7 +1496,10 @@ export default function App() {
                                 { label: 'Personnel', value: ezStats.staff, icon: '👩‍🏫' },
                                 { label: 'Impayés', value: ezStats.unpaidCount, icon: '⚠️' },
                               ].map(m => (
-                                <div key={m.label} className="text-center p-3 rounded-xl" style={{background:'rgba(194,24,91,.05)'}}>
+                                <div key={m.label} className="text-center p-3 rounded-xl cursor-pointer transition-colors" style={{background:'rgba(194,24,91,.05)'}}
+                                  onMouseEnter={e=>(e.currentTarget.style.background='rgba(194,24,91,.1)')}
+                                  onMouseLeave={e=>(e.currentTarget.style.background='rgba(194,24,91,.05)')}
+                                  onClick={()=>{setCurrentOrgId('educazen');setUserOrgId('educazen');setPage('dashboard');}}>
                                   <div className="text-lg mb-1">{m.icon}</div>
                                   <div className="text-xl font-bold text-eiden-deep">{m.value}</div>
                                   <div className="text-[10px] text-gray-400 font-medium">{m.label}</div>
@@ -1505,7 +1536,13 @@ export default function App() {
                             {activities.length === 0 ? (
                               <p className="text-xs text-gray-400 text-center py-4">No activity yet.</p>
                             ) : activities.slice(0,6).map(a => (
-                              <div key={a.id} className="flex items-start gap-3">
+                              <div key={a.id} className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors"
+                                onClick={() => {
+                                  if (a.targetType === 'Guest') setPage('guests');
+                                  else if (a.targetType === 'Booking') setPage('bookings');
+                                  else if (a.targetType === 'Task') setPage('tasks');
+                                  else if (a.targetType === 'Deal') setPage('leads');
+                                }}>
                                 <div className="w-7 h-7 rounded-full bg-eiden-teal/10 flex items-center justify-center shrink-0 mt-0.5">
                                   <ActivityIcon size={12} className="text-eiden-teal" />
                                 </div>
@@ -1521,14 +1558,14 @@ export default function App() {
                         {/* Open Tasks across orgs */}
                         <div className="card">
                           <div className="flex items-center justify-between mb-5">
-                            <h3 className="font-bold text-sm text-eiden-deep">Open Tasks — All Orgs</h3>
+                            <button onClick={() => setPage('tasks')} className="font-bold text-sm text-eiden-deep hover:text-eiden-teal transition-colors">Open Tasks — All Orgs</button>
                             <button onClick={() => setPage('tasks')} className="text-xs text-eiden-teal font-bold hover:underline">View all</button>
                           </div>
                           <div className="space-y-3">
                             {tasks.filter(t => !t.done).length === 0 ? (
                               <p className="text-xs text-gray-400 text-center py-4">All tasks completed.</p>
                             ) : tasks.filter(t=>!t.done).slice(0,5).map(task => (
-                              <div key={task.id} className="flex items-start gap-3">
+                              <div key={task.id} className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors" onClick={() => setPage('tasks')}>
                                 <div className={cn("mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0", "border-gray-200")} />
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-semibold text-gray-700 truncate">{task.name}</p>
@@ -1580,16 +1617,16 @@ export default function App() {
                       </div>
 
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                        <StatCard title="Active Guests" value={guests.filter(g => g.status === 'In-house').length.toString()} change={`${guests.filter(g => g.status === 'Arriving').length} arriving`} trend="up" />
-                        <StatCard title="Total Bookings" value={bookings.length.toString()} change={`${bookings.filter(b => b.status === 'Pending').length} pending`} trend="neutral" />
-                        <StatCard title="Open Tasks" value={tasks.filter(t => !t.done).length.toString()} change={`${tasks.filter(t => t.urgent && !t.done).length} urgent`} trend="up" />
-                        <StatCard title="Revenue (Total)" value={`MAD ${bookings.reduce((acc, b) => acc + b.amount, 0).toLocaleString()}`} change={`${leads.filter(l => l.status === 'Qualified').length} leads`} trend="up" />
+                        <StatCard title="Active Guests" value={guests.filter(g => g.status === 'In-house').length.toString()} change={`${guests.filter(g => g.status === 'Arriving').length} arriving`} trend="up" onClick={() => setPage('guests')} />
+                        <StatCard title="Total Bookings" value={bookings.length.toString()} change={`${bookings.filter(b => b.status === 'Pending').length} pending`} trend="neutral" onClick={() => setPage('bookings')} />
+                        <StatCard title="Open Tasks" value={tasks.filter(t => !t.done).length.toString()} change={`${tasks.filter(t => t.urgent && !t.done).length} urgent`} trend="up" onClick={() => setPage('tasks')} />
+                        <StatCard title="Revenue (Total)" value={`MAD ${bookings.reduce((acc, b) => acc + b.amount, 0).toLocaleString()}`} change={`${leads.filter(l => l.status === 'Qualified').length} leads`} trend="up" onClick={() => setPage('revenue')} />
                       </div>
 
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                         <div className="card overflow-hidden p-0">
                           <div className="p-4 border-b border-gray-50 flex items-center justify-between">
-                            <h3 className="font-bold text-sm">Today's Arrivals</h3>
+                            <button onClick={() => setPage('guests')} className="font-bold text-sm hover:text-keppel transition-colors">Today's Arrivals</button>
                             <Badge status={`${guests.filter(g => g.status === 'Arriving').length} expected`} />
                           </div>
                           <div className="overflow-x-auto">
@@ -1599,7 +1636,7 @@ export default function App() {
                               </thead>
                               <tbody className="divide-y divide-gray-50">
                                 {guests.slice(0, 4).map((guest, i) => (
-                                  <tr key={guest.id} className="hover:bg-gray-50 transition-colors">
+                                  <tr key={guest.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setPage('guests')}>
                                     <td className="px-4 py-3 flex items-center gap-3">
                                       <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold", i % 2 === 0 ? "bg-keppel/20 text-keppel" : "bg-amber/20 text-amber-700")}>{guest.initials}</div>
                                       <span className="font-medium">{guest.name}</span>
@@ -1615,13 +1652,13 @@ export default function App() {
                         </div>
                         <div className="card">
                           <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-sm text-ink">Open Staff Tasks</h3>
+                            <button onClick={() => setPage('tasks')} className="font-bold text-sm text-ink hover:text-keppel transition-colors">Open Staff Tasks</button>
                             <button onClick={() => setPage('tasks')} className="text-xs text-keppel font-bold hover:underline">View all</button>
                           </div>
                           <div className="space-y-4">
                             {tasks.slice(0, 4).map(task => (
-                              <div key={task.id} className="flex items-start gap-3 group">
-                                <button className={cn("mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all", task.done ? "bg-keppel border-keppel text-white" : "border-gray-200 hover:border-keppel")}>
+                              <div key={task.id} className="flex items-start gap-3 group cursor-pointer hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors" onClick={() => setPage('tasks')}>
+                                <button className={cn("mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all", task.done ? "bg-keppel border-keppel text-white" : "border-gray-200 group-hover:border-keppel")}>
                                   {task.done && <CheckSquare size={12} />}
                                 </button>
                                 <div className="flex-1">
@@ -2110,8 +2147,8 @@ export default function App() {
                       </div>
 
                       <div className="card p-0 overflow-hidden table-wrap">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left text-sm">
+                        <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
+                          <table className="w-full text-left text-sm" style={{minWidth:'620px'}}>
                             <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400 font-bold">
                               <tr>
                                 <th className="px-3 sm:px-6 py-3 sm:py-4">Guest</th>
@@ -2265,7 +2302,7 @@ export default function App() {
 
                       <div className="card p-0 overflow-hidden table-wrap">
                         <div className="overflow-x-auto">
-                          <table className="w-full text-left text-sm">
+                          <table className="w-full text-left text-sm" style={{minWidth:'680px'}}>
                             <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400 font-bold">
                               <tr>
                                 <th className="px-3 sm:px-6 py-3 sm:py-4">Ref</th>
@@ -2403,19 +2440,19 @@ export default function App() {
                           <h1 className="text-lg sm:text-2xl font-bold text-ink">Tasks</h1>
                           <p className="text-sm text-gray-500">Today · {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex bg-gray-100 p-1 rounded-lg mr-2">
+                        <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2 w-full sm:w-auto">
+                          <div className="flex flex-wrap bg-gray-100 p-1 rounded-lg gap-0.5">
                             {[
                               { id: 'all', label: 'All' },
-                              { id: 'me', label: 'Assigned to me' },
-                              { id: 'today', label: 'Due Today' },
+                              { id: 'me', label: 'Mine' },
+                              { id: 'today', label: 'Today' },
                               { id: 'urgent', label: 'Urgent' }
                             ].map(f => (
                               <button
                                 key={f.id}
                                 onClick={() => setTaskFilter(f.id as any)}
                                 className={cn(
-                                  "px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                                  "px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all whitespace-nowrap",
                                   taskFilter === f.id ? "bg-white text-keppel shadow-sm" : "text-gray-400 hover:text-gray-600"
                                 )}
                               >
@@ -2423,9 +2460,9 @@ export default function App() {
                               </button>
                             ))}
                           </div>
-                          <button 
+                          <button
                             onClick={() => setShowNewTaskForm(true)}
-                            className="btn btn-coral flex items-center gap-2 w-fit"
+                            className="btn btn-coral flex items-center gap-2 w-fit whitespace-nowrap"
                           >
                             <Plus size={16} /> New Task
                           </button>
@@ -2826,7 +2863,8 @@ export default function App() {
                               <h3 className="font-bold text-sm">Pending / Unconfirmed Bookings</h3>
                               <span className="text-xs text-gray-400">{pendingBookings.length} items</span>
                             </div>
-                            <table className="w-full text-left text-sm">
+                            <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm" style={{minWidth:'360px'}}>
                               <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-400 font-bold">
                                 <tr>
                                   <th className="px-4 py-3">Guest</th>
@@ -2857,6 +2895,7 @@ export default function App() {
                                 ))}
                               </tbody>
                             </table>
+                            </div>
                           </div>
                         </div>
 

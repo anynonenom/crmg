@@ -187,8 +187,8 @@ const EzSelect = ({ label, value, onChange, options, required = false }:
   </div>
 );
 
-const EzStatCard = ({ label, value, sub, color, icon: Icon }: { label: string; value: string | number; sub: string; color: string; icon?: any }) => (
-  <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100">
+const EzStatCard = ({ label, value, sub, color, icon: Icon, onClick }: { label: string; value: string | number; sub: string; color: string; icon?: any; onClick?: () => void }) => (
+  <div className={`bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 transition-all duration-150 ${onClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''}`} onClick={onClick}>
     <div className="flex items-start justify-between mb-2">
       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest" style={{ fontFamily: 'Cormorant Garamond, serif', letterSpacing: '0.15em' }}>{label}</p>
       {Icon && <Icon size={16} style={{ color }} />}
@@ -274,10 +274,13 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
   const [studentForm, setStudentForm] = useState<Partial<EzStudent>>(initStudent(orgId));
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // ── Fetch ──
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    setDbError(null);
     const [s, c, a, p, asn, g, st] = await Promise.all([
       supabase.from('ez_students').select('*').eq('org_id', orgId),
       supabase.from('ez_classes').select('*').eq('org_id', orgId),
@@ -287,6 +290,16 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
       supabase.from('ez_grades').select('*').eq('org_id', orgId),
       supabase.from('ez_staff').select('*').eq('org_id', orgId),
     ]);
+    // Detect missing tables (Postgres error 42P01 = undefined_table)
+    const firstError = [s, c, a, p, asn, g, st].find(r => r.error);
+    if (firstError?.error) {
+      const code = (firstError.error as any).code;
+      if (code === '42P01' || firstError.error.message?.includes('does not exist')) {
+        setDbError('setup_needed');
+      } else {
+        setDbError(firstError.error.message || 'Erreur de connexion à la base de données.');
+      }
+    }
     if (s.data) setStudents(s.data as EzStudent[]);
     if (c.data) setClasses(c.data as EzClass[]);
     if (a.data) setAttendance(a.data as EzAttendance[]);
@@ -302,37 +315,48 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
   // ── Seed ──
   const handleSeedData = async () => {
     setSeeding(true);
-    try {
-      const cls = SEED_CLASSES(orgId);
-      const stf = SEED_STAFF(orgId);
-      const stu = SEED_STUDENTS(orgId);
-      for (const c of cls) await supabase.from('ez_classes').upsert(c);
-      for (const s of stf) await supabase.from('ez_staff').upsert(s);
-      for (const s of stu) await supabase.from('ez_students').upsert(s);
-      // Seed payments for current month
-      for (const s of stu) {
-        const payId = `ezp_${s.id}_avr`;
-        const statuts = ['Payé', 'Non payé', 'Payé', 'Partiel', 'Payé', 'Non payé', 'Payé', 'Payé', 'Non payé', 'Payé'];
-        const idx = stu.indexOf(s);
-        await supabase.from('ez_payments').upsert({
-          id: payId, org_id: orgId, student_id: s.id,
-          mois: 'Avril 2026', montant: s.montant_mensuel,
-          statut: statuts[idx % statuts.length],
-          date_paiement: statuts[idx % statuts.length] === 'Payé' ? '2026-04-0' + ((idx % 5) + 1) : '',
-          mode_paiement: 'Espèces', notes: ''
-        });
+    setSaveError(null);
+    const cls = SEED_CLASSES(orgId);
+    const stf = SEED_STAFF(orgId);
+    const stu = SEED_STUDENTS(orgId);
+
+    // Check table existence with the first insert
+    const { error: probeErr } = await supabase.from('ez_classes').upsert(cls[0]);
+    if (probeErr) {
+      const code = (probeErr as any).code;
+      if (code === '42P01' || probeErr.message?.includes('does not exist')) {
+        setDbError('setup_needed');
+      } else {
+        setSaveError(`Erreur Supabase: ${probeErr.message}`);
       }
-      // Seed assignments
-      const testAssignments = [
-        { id: 'eza1', org_id: orgId, titre: 'Rédaction – Mon Animal Préféré', matiere: 'Français', classe: 'CE2-A', date_limite: '2026-04-18', description: 'Écrire un texte de 10 lignes.' },
-        { id: 'eza2', org_id: orgId, titre: 'Tables de Multiplication', matiere: 'Mathématiques', classe: 'CE1-B', date_limite: '2026-04-17', description: 'Tables de 6, 7 et 8.' },
-        { id: 'eza3', org_id: orgId, titre: 'Le Petit Prince — Chapitres 1-5', matiere: 'Lecture', classe: 'CM1-A', date_limite: '2026-04-20', description: 'Lire et répondre aux questions.' },
-        { id: 'eza4', org_id: orgId, titre: 'Les Fractions', matiere: 'Mathématiques', classe: 'CM2-A', date_limite: '2026-04-19', description: 'Exercices page 45.' },
-      ];
-      for (const a of testAssignments) await supabase.from('ez_assignments').upsert(a);
-      await onNotify(orgId, 'EducaZen initialisé', 'Données de démonstration chargées avec succès.', 'success');
-      await fetchAll();
-    } catch (err) { console.error(err); }
+      setSeeding(false);
+      return;
+    }
+
+    // Tables exist — seed everything
+    for (const c of cls) await supabase.from('ez_classes').upsert(c);
+    for (const s of stf) await supabase.from('ez_staff').upsert(s);
+    for (const s of stu) await supabase.from('ez_students').upsert(s);
+    const statuts = ['Payé', 'Non payé', 'Payé', 'Partiel', 'Payé', 'Non payé', 'Payé', 'Payé', 'Non payé', 'Payé'];
+    for (let i = 0; i < stu.length; i++) {
+      const s = stu[i];
+      await supabase.from('ez_payments').upsert({
+        id: `ezp_${s.id}_avr`, org_id: orgId, student_id: s.id,
+        mois: 'Avril 2026', montant: s.montant_mensuel,
+        statut: statuts[i % statuts.length],
+        date_paiement: statuts[i % statuts.length] === 'Payé' ? `2026-04-0${(i % 5) + 1}` : '',
+        mode_paiement: 'Espèces', notes: ''
+      });
+    }
+    for (const a of [
+      { id: 'eza1', org_id: orgId, titre: 'Rédaction – Mon Animal Préféré', matiere: 'Français', classe: 'CE2-A', date_limite: '2026-04-18', description: 'Écrire un texte de 10 lignes.' },
+      { id: 'eza2', org_id: orgId, titre: 'Tables de Multiplication', matiere: 'Mathématiques', classe: 'CE1-B', date_limite: '2026-04-17', description: 'Tables de 6, 7 et 8.' },
+      { id: 'eza3', org_id: orgId, titre: 'Le Petit Prince — Chapitres 1-5', matiere: 'Lecture', classe: 'CM1-A', date_limite: '2026-04-20', description: 'Lire et répondre aux questions.' },
+      { id: 'eza4', org_id: orgId, titre: 'Les Fractions', matiere: 'Mathématiques', classe: 'CM2-A', date_limite: '2026-04-19', description: 'Exercices page 45.' },
+    ]) await supabase.from('ez_assignments').upsert(a);
+
+    await onNotify(orgId, 'EducaZen initialisé', 'Données de démonstration chargées avec succès.', 'success');
+    await fetchAll();
     setSeeding(false);
   };
 
@@ -367,12 +391,14 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
     const existing = attendance.find(a => a.student_id === studentId && a.date === selectedDate);
     const student = students.find(s => s.id === studentId);
     if (existing) {
-      await supabase.from('ez_attendance').update({ statut }).eq('id', existing.id);
+      const { error } = await supabase.from('ez_attendance').update({ statut }).eq('id', existing.id);
+      if (error) { setSaveError(`Erreur présence: ${error.message}`); return; }
       setAttendance(prev => prev.map(a => a.id === existing.id ? { ...a, statut } : a));
     } else {
       const id = `eza_${studentId}_${selectedDate}`;
       const rec: EzAttendance = { id, org_id: orgId, student_id: studentId, date: selectedDate, statut, note: '' };
-      await supabase.from('ez_attendance').upsert(rec);
+      const { error } = await supabase.from('ez_attendance').upsert(rec);
+      if (error) { setSaveError(`Erreur présence: ${error.message}`); return; }
       setAttendance(prev => [...prev, rec]);
     }
     if (statut === 'Absent' && student) {
@@ -387,14 +413,16 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
     if (pay) {
       const newStatut: StatutPaiement = pay.statut === 'Payé' ? 'Non payé' : 'Payé';
       const newDate = newStatut === 'Payé' ? new Date().toISOString().slice(0, 10) : '';
-      await supabase.from('ez_payments').update({ statut: newStatut, date_paiement: newDate }).eq('id', pay.id);
+      const { error } = await supabase.from('ez_payments').update({ statut: newStatut, date_paiement: newDate }).eq('id', pay.id);
+      if (error) { setSaveError(`Erreur paiement: ${error.message}`); return; }
       setPayments(prev => prev.map(p => p.id === pay.id ? { ...p, statut: newStatut, date_paiement: newDate } : p));
       if (newStatut === 'Payé' && student)
         await onNotify(orgId, 'Paiement reçu', `Paiement de ${student.prenom} ${student.nom} enregistré pour ${filterMois}.`, 'success');
     } else if (student) {
       const id = `ezp_${studentId}_${filterMois.replace(' ', '_')}`;
       const rec: EzPayment = { id, org_id: orgId, student_id: studentId, mois: filterMois, montant: student.montant_mensuel, statut: 'Payé', date_paiement: new Date().toISOString().slice(0, 10), mode_paiement: 'Espèces', notes: '' };
-      await supabase.from('ez_payments').upsert(rec);
+      const { error } = await supabase.from('ez_payments').upsert(rec);
+      if (error) { setSaveError(`Erreur paiement: ${error.message}`); return; }
       setPayments(prev => [...prev, rec]);
       await onNotify(orgId, 'Paiement reçu', `Paiement de ${student.prenom} ${student.nom} enregistré pour ${filterMois}.`, 'success');
     }
@@ -405,6 +433,7 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
     setEditingStudent(null);
     setStudentForm(initStudent(orgId));
     setShowParent2(false);
+    setSaveError(null);
     setShowStudentModal(true);
   };
 
@@ -412,6 +441,7 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
     setEditingStudent(s);
     setStudentForm({ ...s });
     setShowParent2(!!s.parent2_prenom);
+    setSaveError(null);
     setShowStudentModal(true);
   };
 
@@ -421,17 +451,28 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
   const handleSaveStudent = async () => {
     if (!studentForm.prenom || !studentForm.nom) return;
     setSaving(true);
+    setSaveError(null);
     const data = { ...initStudent(orgId), ...studentForm, org_id: orgId };
     if (editingStudent) {
-      await supabase.from('ez_students').update(data).eq('id', editingStudent.id);
-      setStudents(prev => prev.map(s => s.id === editingStudent.id ? { ...s, ...data } as EzStudent : s));
+      const { error } = await supabase.from('ez_students').update(data).eq('id', editingStudent.id);
+      if (error) {
+        setSaveError(`Erreur: ${error.message}`);
+        setSaving(false);
+        return;
+      }
     } else {
       const id = `ez_${Date.now()}`;
       const rec = { ...data, id } as EzStudent;
-      await supabase.from('ez_students').insert(rec);
-      setStudents(prev => [...prev, rec]);
+      const { error } = await supabase.from('ez_students').insert(rec);
+      if (error) {
+        setSaveError(`Erreur: ${error.message}`);
+        setSaving(false);
+        return;
+      }
       await onNotify(orgId, 'Nouvel élève inscrit', `${data.prenom} ${data.nom} a été inscrit(e).`, 'success');
     }
+    // Refetch from Supabase to confirm data persisted
+    await fetchAll();
     setSaving(false);
     setShowStudentModal(false);
   };
@@ -439,7 +480,8 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
   const handleDeleteStudent = async (id: string) => {
     const s = students.find(e => e.id === id);
     if (!confirm(`Supprimer ${s?.prenom} ${s?.nom} ?`)) return;
-    await supabase.from('ez_students').delete().eq('id', id);
+    const { error } = await supabase.from('ez_students').delete().eq('id', id);
+    if (error) { setSaveError(`Erreur suppression: ${error.message}`); return; }
     setStudents(prev => prev.filter(e => e.id !== id));
   };
 
@@ -452,6 +494,81 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
         <div className="text-center">
           <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin mx-auto mb-3" style={{ borderColor: EZ_ACCENT, borderTopColor: 'transparent' }} />
           <p className="text-sm text-gray-400" style={{ fontFamily: 'Quicksand, sans-serif' }}>Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── DB Setup Banner ──
+  if (dbError === 'setup_needed') {
+    const sql = `-- Run this SQL in your Supabase SQL Editor (once):
+create table if not exists ez_students (id text primary key, org_id text not null, prenom text, nom text, date_naissance text, sexe text default 'M', classe text, profil text default 'Standard', statut text default 'Actif', date_inscription text, montant_mensuel integer default 1200, parent1_relation text default 'Mère', parent1_prenom text, parent1_nom text, parent1_email text, parent1_telephone text, parent1_profession text, parent2_relation text, parent2_prenom text, parent2_nom text, parent2_email text, parent2_telephone text, adresse text, ville text, besoins_speciaux text, notes_medicales text, created_at timestamptz default now());
+create table if not exists ez_classes (id text primary key, org_id text not null, nom text, niveau text, enseignant text, horaire_debut text, horaire_fin text, jours text, salle text, capacite integer default 15, created_at timestamptz default now());
+create table if not exists ez_attendance (id text primary key, org_id text not null, student_id text not null, date text not null, statut text not null, note text, created_at timestamptz default now());
+create table if not exists ez_payments (id text primary key, org_id text not null, student_id text not null, mois text not null, montant integer not null, statut text default 'Non payé', date_paiement text, mode_paiement text, notes text, created_at timestamptz default now());
+create table if not exists ez_assignments (id text primary key, org_id text not null, titre text not null, matiere text, classe text, date_limite text, description text, created_at timestamptz default now());
+create table if not exists ez_grades (id text primary key, org_id text not null, assignment_id text not null, student_id text not null, note numeric(4,1), commentaire text, created_at timestamptz default now());
+create table if not exists ez_staff (id text primary key, org_id text not null, prenom text, nom text, role text, matiere text, email text, telephone text, date_embauche text, statut text default 'Actif', created_at timestamptz default now());
+create table if not exists notifications (id text primary key, org_id text not null, title text, message text, type text default 'info', read boolean default false, created_at timestamptz default now());
+-- Disable RLS for all tables (or add policies):
+alter table ez_students disable row level security;
+alter table ez_classes disable row level security;
+alter table ez_attendance disable row level security;
+alter table ez_payments disable row level security;
+alter table ez_assignments disable row level security;
+alter table ez_grades disable row level security;
+alter table ez_staff disable row level security;
+alter table notifications disable row level security;`;
+    return (
+      <div className="max-w-2xl mx-auto mt-8 space-y-4" style={{ fontFamily: 'Quicksand, sans-serif' }}>
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <AlertCircle size={22} className="text-rose-500 shrink-0" />
+            <h2 className="font-extrabold text-rose-700 text-lg" style={{ fontFamily: 'Nunito, sans-serif' }}>
+              Tables EducaZen introuvables dans Supabase
+            </h2>
+          </div>
+          <p className="text-sm text-rose-600 mb-4">
+            Les tables <code className="bg-rose-100 px-1 rounded">ez_*</code> n'existent pas encore dans votre base de données.
+            C'est pour ça que les données disparaissent — elles ne sont pas enregistrées.
+          </p>
+          <p className="text-sm font-semibold text-rose-700 mb-2">Comment corriger :</p>
+          <ol className="text-sm text-rose-600 space-y-1 list-decimal list-inside mb-4">
+            <li>Ouvrez votre <strong>Supabase Dashboard</strong></li>
+            <li>Allez dans <strong>SQL Editor</strong> → <strong>New query</strong></li>
+            <li>Copiez le SQL ci-dessous et cliquez <strong>Run</strong></li>
+            <li>Revenez ici et cliquez <strong>Réessayer</strong></li>
+          </ol>
+          <div className="relative">
+            <pre className="bg-gray-900 text-green-300 text-xs rounded-xl p-4 overflow-x-auto whitespace-pre-wrap leading-relaxed">{sql}</pre>
+            <button
+              onClick={() => { navigator.clipboard.writeText(sql); }}
+              className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded-lg transition"
+            >
+              Copier
+            </button>
+          </div>
+          <button
+            onClick={() => fetchAll()}
+            className="mt-4 w-full py-2.5 rounded-xl font-bold text-white text-sm transition"
+            style={{ background: EZ_ACCENT }}
+          >
+            Réessayer la connexion
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (dbError) {
+    return (
+      <div className="max-w-xl mx-auto mt-8">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-3">
+          <AlertCircle size={20} className="text-red-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-bold text-red-700 mb-1">Erreur de base de données</p>
+            <p className="text-sm text-red-600">{dbError}</p>
+            <button onClick={() => fetchAll()} className="mt-3 text-sm font-semibold text-red-700 underline">Réessayer</button>
+          </div>
         </div>
       </div>
     );
@@ -544,34 +661,32 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
   ];
 
   return (
-    <div className="space-y-4 pb-8" style={{ fontFamily: 'Quicksand, sans-serif' }}>
+    <div className="space-y-3 sm:space-y-4 pb-8" style={{ fontFamily: 'Quicksand, sans-serif' }}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <img src="/educazen.png" alt="EducazenKids" className="h-10 w-auto" onError={e => (e.currentTarget.style.display = 'none')} />
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>
-              Tableau de Bord <span style={{ color: EZ_ACCENT }}>EducazenKids</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <img src="/educazen.png" alt="EducazenKids" className="h-8 sm:h-10 w-auto shrink-0" onError={e => (e.currentTarget.style.display = 'none')} />
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-extrabold text-gray-800 leading-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
+              <span className="hidden sm:inline">Tableau de Bord </span><span style={{ color: EZ_ACCENT }}>EducazenKids</span>
             </h1>
-            <p className="text-[11px] text-gray-400" style={{ fontFamily: 'Cormorant Garamond, serif', letterSpacing: '0.1em' }}>Centre Éducatif & Psychosocial · Agadir, Maroc</p>
+            <p className="text-[10px] sm:text-[11px] text-gray-400 truncate" style={{ fontFamily: 'Cormorant Garamond, serif', letterSpacing: '0.1em' }}>Centre Éducatif · Agadir, Maroc</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button onClick={fetchAll} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-gray-400">
-            <RefreshCw size={15} />
+            <RefreshCw size={14} />
           </button>
-          {students.length === 0 && (
-            <button onClick={handleSeedData} disabled={seeding}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-white text-xs font-bold transition-opacity hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: EZ_VIOLET, fontFamily: 'Nunito, sans-serif' }}>
-              <Database size={13} />{seeding ? 'Chargement...' : 'Initialiser les données'}
-            </button>
-          )}
+          <button onClick={handleSeedData} disabled={seeding}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-white text-xs font-bold transition-opacity hover:opacity-90 disabled:opacity-60 whitespace-nowrap"
+            style={{ backgroundColor: EZ_VIOLET, fontFamily: 'Nunito, sans-serif' }}>
+            <Database size={12} /><span className="hidden xs:inline">{seeding ? 'Chargement...' : 'Données démo'}</span><span className="xs:hidden">{seeding ? '...' : 'Démo'}</span>
+          </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 flex gap-1 overflow-x-auto">
+      <div className="bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100 flex gap-1 overflow-x-auto [scrollbar-width:none] [-webkit-overflow-scrolling:touch]" style={{scrollbarWidth:'none'}}>
         {TABS.map(t => (
           <EzTabBtn key={t.id} label={t.label} icon={t.icon} active={tab === t.id} onClick={() => setTab(t.id as EzTab)} count={t.count} />
         ))}
@@ -581,16 +696,16 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
       {tab === 'dashboard' && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <EzStatCard label="Élèves Actifs" value={activeStudents.length} sub={`${students.filter(s => s.statut === 'Parti').length} parti(s)`} color={EZ_ACCENT} icon={Users} />
-            <EzStatCard label="Présence Auj." value={`${tauxPresence}%`} sub={`${presentCount}/${activeStudents.length} élèves`} color={EZ_TEAL} icon={CheckSquare} />
-            <EzStatCard label={`Perçu ${filterMois.split(' ')[0]}`} value={`${totalPercu.toLocaleString()} MAD`} sub={`/${totalAttendu.toLocaleString()} attendus`} color={EZ_VIOLET} icon={CreditCard} />
-            <EzStatCard label="Personnel Actif" value={staff.filter(s => s.statut === 'Actif').length} sub={`${staff.filter(s => s.statut === 'Congé').length} en congé`} color={EZ_GOLD} icon={UserCog} />
+            <EzStatCard label="Élèves Actifs" value={activeStudents.length} sub={`${students.filter(s => s.statut === 'Parti').length} parti(s)`} color={EZ_ACCENT} icon={Users} onClick={() => setTab('eleves')} />
+            <EzStatCard label="Présence Auj." value={`${tauxPresence}%`} sub={`${presentCount}/${activeStudents.length} élèves`} color={EZ_TEAL} icon={CheckSquare} onClick={() => setTab('presences')} />
+            <EzStatCard label={`Perçu ${filterMois.split(' ')[0]}`} value={`${totalPercu.toLocaleString()} MAD`} sub={`/${totalAttendu.toLocaleString()} attendus`} color={EZ_VIOLET} icon={CreditCard} onClick={() => setTab('paiements')} />
+            <EzStatCard label="Personnel Actif" value={staff.filter(s => s.statut === 'Actif').length} sub={`${staff.filter(s => s.statut === 'Congé').length} en congé`} color={EZ_GOLD} icon={UserCog} onClick={() => setTab('personnel')} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Unpaid */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-gray-50 flex items-center justify-between">
+              <div className="p-4 border-b border-gray-50 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setTab('paiements')}>
                 <div className="flex items-center gap-2"><AlertCircle size={15} className="text-rose-500" /><h3 className="font-extrabold text-sm" style={{ fontFamily: 'Nunito, sans-serif' }}>Paiements en Attente</h3></div>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 font-bold">{nonPayers.length}</span>
               </div>
@@ -600,7 +715,7 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
                     const s = students.find(e => e.student_id === p.student_id || e.id === p.student_id);
                     if (!s) return null;
                     return (
-                      <div key={p.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                      <div key={p.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-rose-50/30 transition-colors" onClick={() => setTab('paiements')}>
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-[#FFF0F5] text-[#C2185B] flex items-center justify-center text-xs font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
                           <div><p className="text-sm font-semibold text-gray-700">{s.prenom} {s.nom}</p><p className="text-xs text-gray-400">{s.classe}</p></div>
@@ -618,14 +733,14 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
 
             {/* Absences */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-gray-50 flex items-center gap-2">
+              <div className="p-4 border-b border-gray-50 flex items-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setTab('presences')}>
                 <Clock size={15} style={{ color: EZ_VIOLET }} /><h3 className="font-extrabold text-sm" style={{ fontFamily: 'Nunito, sans-serif' }}>Absences Récentes</h3>
               </div>
               {attendance.filter(a => a.statut === 'Absent').length === 0 ? <p className="p-5 text-center text-xs text-gray-400">Aucune absence enregistrée.</p> : (
                 attendance.filter(a => a.statut === 'Absent').slice(0, 6).map((a, i) => {
                   const s = students.find(e => e.id === a.student_id);
                   return s ? (
-                    <div key={a.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+                    <div key={a.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-violet-50/30 transition-colors" onClick={() => setTab('presences')}>
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarBg[i % 4]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
                         <div><p className="text-sm font-semibold text-gray-700">{s.prenom} {s.nom}</p><p className="text-xs text-gray-400">{s.classe}</p></div>
@@ -645,7 +760,7 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
                 <TrendingDown size={15} className="text-amber-600" /><h3 className="font-extrabold text-sm" style={{ fontFamily: 'Nunito, sans-serif' }}>Élèves Ayant Quitté le Centre</h3>
               </div>
               {students.filter(s => s.statut === 'Parti').map((s, i) => (
-                <div key={s.id} className="flex items-center justify-between px-4 py-3 border-b border-amber-50/50 last:border-0">
+                <div key={s.id} className="flex items-center justify-between px-4 py-3 border-b border-amber-50/50 last:border-0 cursor-pointer hover:bg-amber-50/40 transition-colors" onClick={() => openEditStudent(s)}>
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center text-xs font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
                     <div><p className="text-sm font-semibold">{s.prenom} {s.nom}</p><p className="text-xs text-gray-400">{s.classe} · {s.profil}</p></div>
@@ -696,7 +811,7 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filteredStudents.map((s, i) => (
-                    <tr key={s.id} className="hover:bg-[#FFF0F5]/30 transition-colors">
+                    <tr key={s.id} className="hover:bg-[#FFF0F5]/50 transition-colors cursor-pointer" onClick={() => openEditStudent(s)}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${avatarBg[i % 4]}`} style={{ fontFamily: 'Nunito, sans-serif' }}>{initials(s.prenom, s.nom)}</div>
@@ -709,7 +824,7 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
                       <td className="px-4 py-3"><p className="text-xs text-gray-600 flex items-center gap-1"><Phone size={11} /> {s.parent1_telephone}</p><p className="text-xs text-gray-400 flex items-center gap-1"><Mail size={11} /> {s.parent1_email}</p></td>
                       <td className="px-4 py-3 font-bold" style={{ color: EZ_VIOLET }}>{s.montant_mensuel} MAD</td>
                       <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.statut === 'Actif' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'}`}>{s.statut}</span></td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           <button onClick={() => openEditStudent(s)} className="p-1.5 rounded-lg hover:bg-[#FFF0F5] transition-colors" style={{ color: EZ_ACCENT }}><Pencil size={13} /></button>
                           <button onClick={() => handleDeleteStudent(s.id)} className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-400 transition-colors"><Trash2 size={13} /></button>
@@ -729,11 +844,21 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
       {/* ── CLASSES ── */}
       {tab === 'classes' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {classes.length === 0 && (
+            <div className="col-span-full bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+              <GraduationCap size={36} className="mx-auto mb-3 text-gray-200" />
+              <p className="font-bold text-gray-400 mb-1" style={{ fontFamily: 'Nunito, sans-serif' }}>Aucune classe</p>
+              <p className="text-xs text-gray-400 mb-4">Cliquez sur <strong>Données démo</strong> pour charger les classes, le personnel, les devoirs et les paiements.</p>
+              <button onClick={handleSeedData} disabled={seeding} className="px-4 py-2 rounded-xl text-white text-xs font-bold" style={{ backgroundColor: EZ_VIOLET }}>
+                <Database size={12} className="inline mr-1" />{seeding ? 'Chargement...' : 'Charger les données démo'}
+              </button>
+            </div>
+          )}
           {classes.map((cls, i) => {
             const enrolled = students.filter(s => s.classe === cls.nom && s.statut === 'Actif');
             const accent = accentList[i % accentList.length];
             return (
-              <div key={cls.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+              <div key={cls.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setFilterClasse(cls.nom); setTab('eleves'); }}>
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="text-lg font-extrabold text-gray-800" style={{ fontFamily: 'Nunito, sans-serif' }}>{cls.nom}</h3>
@@ -769,16 +894,16 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
       {/* ── PRÉSENCES ── */}
       {tab === 'presences' && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-semibold text-gray-600">Date :</label>
+              <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Date :</label>
               <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
-                className="px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }} />
+                className="px-2 sm:px-3 py-1.5 sm:py-2 text-sm rounded-xl border border-gray-200 bg-white" style={{ fontFamily: 'Quicksand, sans-serif' }} />
             </div>
-            <div className="flex gap-2 text-xs font-semibold flex-wrap">
-              <span className="px-3 py-1.5 rounded-full bg-teal-50 text-teal-700">{todayAttendance.filter(a => a.statut === 'Présent').length} Présents</span>
-              <span className="px-3 py-1.5 rounded-full bg-rose-50 text-rose-600">{todayAttendance.filter(a => a.statut === 'Absent').length} Absents</span>
-              <span className="px-3 py-1.5 rounded-full bg-amber-50 text-amber-700">{todayAttendance.filter(a => a.statut === 'Retard').length} Retards</span>
+            <div className="flex gap-1.5 text-xs font-semibold flex-wrap">
+              <span className="px-2.5 py-1.5 rounded-full bg-teal-50 text-teal-700 whitespace-nowrap">{todayAttendance.filter(a => a.statut === 'Présent').length} Présents</span>
+              <span className="px-2.5 py-1.5 rounded-full bg-rose-50 text-rose-600 whitespace-nowrap">{todayAttendance.filter(a => a.statut === 'Absent').length} Absents</span>
+              <span className="px-2.5 py-1.5 rounded-full bg-amber-50 text-amber-700 whitespace-nowrap">{todayAttendance.filter(a => a.statut === 'Retard').length} Retards</span>
             </div>
           </div>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -808,11 +933,12 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
                           {att ? <span className={`text-xs px-2 py-1 rounded-full font-semibold ${presenceStyle[att.statut]}`}>{att.statut}</span>
                             : <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-400">Non marqué</span>}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 sm:px-4 py-3">
                           <div className="flex gap-1">
                             {(['Présent', 'Absent', 'Retard'] as StatutPresence[]).map(st => (
                               <button key={st} onClick={() => markAttendance(s.id, st)}
-                                className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${att?.statut === st ? presenceStyle[st] + ' ring-1 ring-current' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
+                                title={st}
+                                className={`w-7 h-7 rounded-lg text-sm font-bold transition-all flex items-center justify-center ${att?.statut === st ? presenceStyle[st] + ' ring-1 ring-current' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}>
                                 {st === 'Présent' ? '✓' : st === 'Absent' ? '✗' : '⏱'}
                               </button>
                             ))}
@@ -831,18 +957,18 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
       {/* ── PAIEMENTS ── */}
       {tab === 'paiements' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-teal-50 rounded-2xl p-4 border border-teal-100">
-              <p className="text-[10px] font-bold text-teal-600 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Total Perçu</p>
-              <p className="text-2xl font-extrabold text-teal-700" style={{ fontFamily: 'Nunito, sans-serif' }}>{totalPercu.toLocaleString()} MAD</p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="bg-teal-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-teal-100">
+              <p className="text-[9px] sm:text-[10px] font-bold text-teal-600 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Total Perçu</p>
+              <p className="text-lg sm:text-2xl font-extrabold text-teal-700" style={{ fontFamily: 'Nunito, sans-serif' }}>{totalPercu.toLocaleString()}<span className="text-xs font-semibold ml-0.5">MAD</span></p>
             </div>
-            <div className="bg-rose-50 rounded-2xl p-4 border border-rose-100">
-              <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Reste à Collecter</p>
-              <p className="text-2xl font-extrabold text-rose-600" style={{ fontFamily: 'Nunito, sans-serif' }}>{(totalAttendu - totalPercu).toLocaleString()} MAD</p>
+            <div className="bg-rose-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-rose-100">
+              <p className="text-[9px] sm:text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Reste à Collecter</p>
+              <p className="text-lg sm:text-2xl font-extrabold text-rose-600" style={{ fontFamily: 'Nunito, sans-serif' }}>{(totalAttendu - totalPercu).toLocaleString()}<span className="text-xs font-semibold ml-0.5">MAD</span></p>
             </div>
-            <div className="bg-[#F8F0FF] rounded-2xl p-4 border border-violet-100">
-              <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Taux de Recouvrement</p>
-              <p className="text-2xl font-extrabold text-violet-700" style={{ fontFamily: 'Nunito, sans-serif' }}>{totalAttendu > 0 ? Math.round(totalPercu / totalAttendu * 100) : 0}%</p>
+            <div className="bg-[#F8F0FF] rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-violet-100">
+              <p className="text-[9px] sm:text-[10px] font-bold text-violet-600 uppercase tracking-widest mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>Recouvrement</p>
+              <p className="text-lg sm:text-2xl font-extrabold text-violet-700" style={{ fontFamily: 'Nunito, sans-serif' }}>{totalAttendu > 0 ? Math.round(totalPercu / totalAttendu * 100) : 0}%</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -899,7 +1025,14 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
       {tab === 'devoirs' && (
         <div className="space-y-4">
           {assignments.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400">Aucun devoir. Initialisez les données.</div>
+            <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+              <BookMarked size={36} className="mx-auto mb-3 text-gray-200" />
+              <p className="font-bold text-gray-400 mb-1" style={{ fontFamily: 'Nunito, sans-serif' }}>Aucun devoir</p>
+              <p className="text-xs text-gray-400 mb-4">Cliquez sur <strong>Données démo</strong> pour charger les devoirs et les notes.</p>
+              <button onClick={handleSeedData} disabled={seeding} className="px-4 py-2 rounded-xl text-white text-xs font-bold" style={{ backgroundColor: EZ_VIOLET }}>
+                <Database size={12} className="inline mr-1" />{seeding ? 'Chargement...' : 'Charger les données démo'}
+              </button>
+            </div>
           ) : assignments.map((asn, i) => {
             const asnGrades = grades.filter(g => g.assignment_id === asn.id);
             const moyenne = asnGrades.length > 0 ? (asnGrades.reduce((s, g) => s + Number(g.note), 0) / asnGrades.length).toFixed(1) : '—';
@@ -963,7 +1096,16 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
               </div>
             </div>
           ))}
-          {staff.length === 0 && <div className="col-span-3 text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">Aucun personnel. Initialisez les données.</div>}
+          {staff.length === 0 && (
+            <div className="col-span-full bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+              <UserCog size={36} className="mx-auto mb-3 text-gray-200" />
+              <p className="font-bold text-gray-400 mb-1" style={{ fontFamily: 'Nunito, sans-serif' }}>Aucun personnel</p>
+              <p className="text-xs text-gray-400 mb-4">Cliquez sur <strong>Données démo</strong> pour charger le personnel.</p>
+              <button onClick={handleSeedData} disabled={seeding} className="px-4 py-2 rounded-xl text-white text-xs font-bold" style={{ backgroundColor: EZ_VIOLET }}>
+                <Database size={12} className="inline mr-1" />{seeding ? 'Chargement...' : 'Charger les données démo'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -972,7 +1114,7 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ fontFamily: 'Quicksand, sans-serif' }}>
           <div className="bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-3xl shadow-2xl max-h-[95vh] overflow-y-auto">
             {/* Modal header */}
-            <div className="sticky top-0 bg-white px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between z-10 rounded-t-3xl sm:rounded-t-2xl">
+            <div className="sticky top-0 bg-white px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-gray-100 flex items-center justify-between z-10 rounded-t-3xl sm:rounded-t-2xl">
               <div>
                 <h2 className="text-xl font-extrabold" style={{ fontFamily: 'Nunito, sans-serif', color: EZ_ACCENT }}>
                   {editingStudent ? 'Modifier le dossier' : 'Inscription d\'un élève'}
@@ -982,7 +1124,7 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
               <button onClick={() => setShowStudentModal(false)} className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500"><X size={18} /></button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
               {/* Section: Élève */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
@@ -1069,7 +1211,13 @@ export function EducazenDashboard({ role, userEmail, orgId, onNotify }: Educazen
             </div>
 
             {/* Modal footer */}
-            <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-100 flex gap-3">
+            {saveError && (
+              <div className="mx-6 mb-2 bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+                <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                <p className="text-sm text-red-600">{saveError}</p>
+              </div>
+            )}
+            <div className="sticky bottom-0 bg-white px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-100 flex gap-2 sm:gap-3">
               <button onClick={handleSaveStudent} disabled={saving}
                 className="flex-1 py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-60"
                 style={{ backgroundColor: EZ_ACCENT, fontFamily: 'Nunito, sans-serif' }}>
