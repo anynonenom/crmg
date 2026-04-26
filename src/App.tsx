@@ -3054,7 +3054,7 @@ export default function App() {
 
                               return (
                                 <div key={i} className={cn(
-                                  "bg-white min-h-[140px] p-2 transition-colors",
+                                  "bg-white min-h-[200px] p-2 transition-colors",
                                   !isCurrentMonth ? "opacity-30 bg-gray-50" : "hover:bg-gray-50"
                                 )}>
                                   <div className={cn(
