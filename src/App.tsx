@@ -3065,17 +3065,17 @@ export default function App() {
                                   </div>
                                   <div className="space-y-1">
                                     {dayBookings.slice(0, 2).map(b => (
-                                      <div key={b.id} className="text-[9px] px-1.5 py-0.5 bg-keppel/10 text-keppel rounded truncate font-medium">
+                                      <div key={b.id} className="text-[10px] px-1.5 py-0.5 bg-keppel/10 text-keppel rounded truncate font-medium">
                                         🏨 {b.guestName}
                                       </div>
                                     ))}
                                     {dayTasks.slice(0, 2).map(t => (
-                                      <div key={t.id} className="text-[9px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded truncate font-medium">
+                                      <div key={t.id} className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded truncate font-medium">
                                         ✅ {t.name}
                                       </div>
                                     ))}
                                     {(dayBookings.length + dayTasks.length) > 4 && (
-                                      <div className="text-[9px] text-gray-400">+{dayBookings.length + dayTasks.length - 4} more</div>
+                                      <div className="text-[10px] text-gray-400">+{dayBookings.length + dayTasks.length - 4} more</div>
                                     )}
                                   </div>
                                 </div>
