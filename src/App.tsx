@@ -231,6 +231,7 @@ export default function App() {
   const [myGuestProfile, setMyGuestProfile] = useState<Guest | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [taskFilter, setTaskFilter] = useState<'all' | 'me' | 'today' | 'urgent'>('all');
+  const [selectedCalDay, setSelectedCalDay] = useState<string | null>(null);
   const [lunjaMonitorTab, setLunjaMonitorTab] = useState<'overview'|'guests'|'bookings'|'tasks'|'revenue'>('overview');
 
   // New Guest Form State
@@ -3052,14 +3053,21 @@ export default function App() {
                               const dayBookings = dateStr ? bookings.filter(b => b.checkIn === dateStr || b.checkOut === dateStr) : [];
                               const dayTasks = dateStr ? tasks.filter(t => t.date === dateStr) : [];
 
+                              const isSelected = isCurrentMonth && dateStr === selectedCalDay;
+
                               return (
-                                <div key={i} className={cn(
-                                  "bg-white min-h-[200px] p-2 transition-colors",
-                                  !isCurrentMonth ? "opacity-30 bg-gray-50" : "hover:bg-gray-50"
-                                )}>
+                                <div
+                                  key={i}
+                                  onClick={() => isCurrentMonth && setSelectedCalDay(isSelected ? null : dateStr)}
+                                  className={cn(
+                                    "bg-white min-h-[200px] p-2 transition-all",
+                                    !isCurrentMonth ? "opacity-30 bg-gray-50" : "hover:bg-gray-50 cursor-pointer",
+                                    isSelected ? "ring-2 ring-inset ring-coral bg-coral/5" : ""
+                                  )}
+                                >
                                   <div className={cn(
                                     "text-xs font-bold mb-1 w-7 h-7 flex items-center justify-center rounded-full",
-                                    isToday ? "bg-coral text-white" : "text-gray-500"
+                                    isToday ? "bg-coral text-white" : isSelected ? "text-coral" : "text-gray-500"
                                   )}>
                                     {isCurrentMonth ? dayNum : ''}
                                   </div>
@@ -3090,6 +3098,86 @@ export default function App() {
                           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-keppel/20 inline-block"/>Booking check-in/out</span>
                           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 inline-block"/>Task due</span>
                         </div>
+
+                        {/* Day detail panel */}
+                        {selectedCalDay && (() => {
+                          const selBookings = bookings.filter(b => b.checkIn === selectedCalDay || b.checkOut === selectedCalDay);
+                          const selTasks = tasks.filter(t => t.date === selectedCalDay);
+                          const selDate = new Date(selectedCalDay + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                          return (
+                            <div className="card border-coral/20 bg-coral/5 animate-in fade-in slide-in-from-top-3 duration-300">
+                              <div className="flex items-center justify-between mb-5">
+                                <div>
+                                  <h3 className="font-bold text-ink">{selDate}</h3>
+                                  <p className="text-xs text-gray-400 mt-0.5">{selBookings.length} booking{selBookings.length !== 1 ? 's' : ''} · {selTasks.length} task{selTasks.length !== 1 ? 's' : ''}</p>
+                                </div>
+                                <button onClick={() => setSelectedCalDay(null)} className="text-gray-400 hover:text-ink transition-colors">
+                                  <X size={18} />
+                                </button>
+                              </div>
+
+                              {selBookings.length === 0 && selTasks.length === 0 ? (
+                                <p className="text-sm text-gray-400 italic text-center py-4">Nothing scheduled for this day.</p>
+                              ) : (
+                                <div className="space-y-4">
+                                  {selBookings.length > 0 && (
+                                    <div>
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bookings</p>
+                                      <div className="space-y-2">
+                                        {selBookings.map(b => (
+                                          <div key={b.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+                                            <div className="flex items-center gap-3">
+                                              <div className="w-8 h-8 rounded-full bg-keppel/10 flex items-center justify-center text-keppel text-xs font-bold">
+                                                {b.guestName.charAt(0)}
+                                              </div>
+                                              <div>
+                                                <div className="text-sm font-semibold text-ink">{b.guestName}</div>
+                                                <div className="text-[11px] text-gray-400">{b.type} · {b.ref}</div>
+                                              </div>
+                                            </div>
+                                            <div className="text-right">
+                                              <div className="text-sm font-bold text-ink">MAD {b.amount.toLocaleString()}</div>
+                                              <div className="text-[10px] text-gray-400">
+                                                {b.checkIn === selectedCalDay ? '→ Check-in' : '← Check-out'}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {selTasks.length > 0 && (
+                                    <div>
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Tasks</p>
+                                      <div className="space-y-2">
+                                        {selTasks.map(t => (
+                                          <div key={t.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+                                            <div className="flex items-center gap-3">
+                                              <div className={cn(
+                                                "w-8 h-8 rounded-full flex items-center justify-center",
+                                                t.done ? "bg-keppel/10 text-keppel" : "bg-amber-50 text-amber-500"
+                                              )}>
+                                                {t.done ? <Check size={14} /> : <span className="text-xs font-bold">{t.department.charAt(0)}</span>}
+                                              </div>
+                                              <div>
+                                                <div className={cn("text-sm font-semibold", t.done && "line-through text-gray-400")}>{t.name}</div>
+                                                <div className="text-[11px] text-gray-400">{t.department} · {t.assignee} · Due {t.due}</div>
+                                              </div>
+                                            </div>
+                                            {t.urgent && (
+                                              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-coral/10 text-coral rounded-full">Urgent</span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })()}
