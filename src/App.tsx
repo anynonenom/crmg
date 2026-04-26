@@ -3099,82 +3099,95 @@ export default function App() {
                           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-100 inline-block"/>Task due</span>
                         </div>
 
-                        {/* Day detail panel */}
+                        {/* Day detail modal */}
                         {selectedCalDay && (() => {
                           const selBookings = bookings.filter(b => b.checkIn === selectedCalDay || b.checkOut === selectedCalDay);
                           const selTasks = tasks.filter(t => t.date === selectedCalDay);
                           const selDate = new Date(selectedCalDay + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                           return (
-                            <div className="card border-coral/20 bg-coral/5 animate-in fade-in slide-in-from-top-3 duration-300">
-                              <div className="flex items-center justify-between mb-5">
-                                <div>
-                                  <h3 className="font-bold text-ink">{selDate}</h3>
-                                  <p className="text-xs text-gray-400 mt-0.5">{selBookings.length} booking{selBookings.length !== 1 ? 's' : ''} · {selTasks.length} task{selTasks.length !== 1 ? 's' : ''}</p>
+                            <div
+                              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                              style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+                              onClick={() => setSelectedCalDay(null)}
+                            >
+                              <div
+                                className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {/* Modal header */}
+                                <div className="flex items-start justify-between p-6 border-b border-gray-100">
+                                  <div>
+                                    <h3 className="font-bold text-ink text-base">{selDate}</h3>
+                                    <p className="text-xs text-gray-400 mt-0.5">{selBookings.length} booking{selBookings.length !== 1 ? 's' : ''} · {selTasks.length} task{selTasks.length !== 1 ? 's' : ''}</p>
+                                  </div>
+                                  <button onClick={() => setSelectedCalDay(null)} className="text-gray-400 hover:text-ink transition-colors mt-0.5">
+                                    <X size={18} />
+                                  </button>
                                 </div>
-                                <button onClick={() => setSelectedCalDay(null)} className="text-gray-400 hover:text-ink transition-colors">
-                                  <X size={18} />
-                                </button>
+
+                                {/* Modal body */}
+                                <div className="p-6">
+                                  {selBookings.length === 0 && selTasks.length === 0 ? (
+                                    <p className="text-sm text-gray-400 italic text-center py-6">Nothing scheduled for this day.</p>
+                                  ) : (
+                                    <div className="space-y-5">
+                                      {selBookings.length > 0 && (
+                                        <div>
+                                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Bookings</p>
+                                          <div className="space-y-2">
+                                            {selBookings.map(b => (
+                                              <div key={b.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                                                <div className="flex items-center gap-3">
+                                                  <div className="w-9 h-9 rounded-full bg-keppel/10 flex items-center justify-center text-keppel text-sm font-bold">
+                                                    {b.guestName.charAt(0)}
+                                                  </div>
+                                                  <div>
+                                                    <div className="text-sm font-semibold text-ink">{b.guestName}</div>
+                                                    <div className="text-[11px] text-gray-400">{b.type} · {b.ref}</div>
+                                                  </div>
+                                                </div>
+                                                <div className="text-right">
+                                                  <div className="text-sm font-bold text-ink">MAD {b.amount.toLocaleString()}</div>
+                                                  <div className="text-[10px] text-keppel font-medium">
+                                                    {b.checkIn === selectedCalDay ? '→ Check-in' : '← Check-out'}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {selTasks.length > 0 && (
+                                        <div>
+                                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Tasks</p>
+                                          <div className="space-y-2">
+                                            {selTasks.map(t => (
+                                              <div key={t.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                                                <div className="flex items-center gap-3">
+                                                  <div className={cn(
+                                                    "w-9 h-9 rounded-full flex items-center justify-center",
+                                                    t.done ? "bg-keppel/10 text-keppel" : "bg-amber-50 text-amber-500"
+                                                  )}>
+                                                    {t.done ? <Check size={14} /> : <span className="text-xs font-bold">{t.department.charAt(0)}</span>}
+                                                  </div>
+                                                  <div>
+                                                    <div className={cn("text-sm font-semibold", t.done && "line-through text-gray-400")}>{t.name}</div>
+                                                    <div className="text-[11px] text-gray-400">{t.department} · {t.assignee} · Due {t.due}</div>
+                                                  </div>
+                                                </div>
+                                                {t.urgent && (
+                                                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-coral/10 text-coral rounded-full shrink-0">Urgent</span>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-
-                              {selBookings.length === 0 && selTasks.length === 0 ? (
-                                <p className="text-sm text-gray-400 italic text-center py-4">Nothing scheduled for this day.</p>
-                              ) : (
-                                <div className="space-y-4">
-                                  {selBookings.length > 0 && (
-                                    <div>
-                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Bookings</p>
-                                      <div className="space-y-2">
-                                        {selBookings.map(b => (
-                                          <div key={b.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
-                                            <div className="flex items-center gap-3">
-                                              <div className="w-8 h-8 rounded-full bg-keppel/10 flex items-center justify-center text-keppel text-xs font-bold">
-                                                {b.guestName.charAt(0)}
-                                              </div>
-                                              <div>
-                                                <div className="text-sm font-semibold text-ink">{b.guestName}</div>
-                                                <div className="text-[11px] text-gray-400">{b.type} · {b.ref}</div>
-                                              </div>
-                                            </div>
-                                            <div className="text-right">
-                                              <div className="text-sm font-bold text-ink">MAD {b.amount.toLocaleString()}</div>
-                                              <div className="text-[10px] text-gray-400">
-                                                {b.checkIn === selectedCalDay ? '→ Check-in' : '← Check-out'}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {selTasks.length > 0 && (
-                                    <div>
-                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Tasks</p>
-                                      <div className="space-y-2">
-                                        {selTasks.map(t => (
-                                          <div key={t.id} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
-                                            <div className="flex items-center gap-3">
-                                              <div className={cn(
-                                                "w-8 h-8 rounded-full flex items-center justify-center",
-                                                t.done ? "bg-keppel/10 text-keppel" : "bg-amber-50 text-amber-500"
-                                              )}>
-                                                {t.done ? <Check size={14} /> : <span className="text-xs font-bold">{t.department.charAt(0)}</span>}
-                                              </div>
-                                              <div>
-                                                <div className={cn("text-sm font-semibold", t.done && "line-through text-gray-400")}>{t.name}</div>
-                                                <div className="text-[11px] text-gray-400">{t.department} · {t.assignee} · Due {t.due}</div>
-                                              </div>
-                                            </div>
-                                            {t.urgent && (
-                                              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-coral/10 text-coral rounded-full">Urgent</span>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
                             </div>
                           );
                         })()}
