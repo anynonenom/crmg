@@ -1796,11 +1796,11 @@ export default function App() {
                     const lPending  = lBookings.filter(b=>b.status==='Pending').length;
                     const lUrgent   = lTasks.filter(t=>t.urgent&&!t.done).length;
                     const TABS = [
-                      {id:'overview', label:'Overview',  icon:'📊'},
-                      {id:'guests',   label:'Guests',    icon:'👥'},
-                      {id:'bookings', label:'Bookings',  icon:'📅'},
-                      {id:'tasks',    label:'Tasks',     icon:'✅'},
-                      {id:'revenue',  label:'Revenue',   icon:'💰'},
+                      {id:'overview', label:'Overview',  icon: LayoutDashboard},
+                      {id:'guests',   label:'Guests',    icon: Users},
+                      {id:'bookings', label:'Bookings',  icon: CalendarDays},
+                      {id:'tasks',    label:'Tasks',     icon: CheckSquare},
+                      {id:'revenue',  label:'Revenue',   icon: BarChart3},
                     ] as const;
                     return (
                       <div className="space-y-4">
@@ -1822,7 +1822,7 @@ export default function App() {
                           {TABS.map(t=>(
                             <button key={t.id} onClick={()=>setLunjaMonitorTab(t.id)}
                               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${lunjaMonitorTab===t.id?'text-white shadow-sm bg-keppel':'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
-                              <span>{t.icon}</span> {t.label}
+                              <t.icon size={14} /> {t.label}
                             </button>
                           ))}
                         </div>
