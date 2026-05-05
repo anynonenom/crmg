@@ -48,7 +48,7 @@ import { cn } from './lib/utils';
 // --- Types ---
 
 type Role = 'superadmin' | 'admin' | 'client';
-type Page = 'dashboard' | 'guests' | 'bookings' | 'tasks' | 'revenue' | 'leads' | 'organizations' | 'users' | 'client-overview' | 'client-booking' | 'client-dining' | 'client-activities' | 'calendar';
+type Page = 'dashboard' | 'guests' | 'bookings' | 'tasks' | 'revenue' | 'leads' | 'organizations' | 'users' | 'client-overview' | 'client-booking' | 'client-dining' | 'client-activities' | 'calendar' | 'settings';
 
 interface Organization {
   id: string;
@@ -1051,14 +1051,11 @@ export default function App() {
         ) : isEz ? (
           <img src="/educazen.png" alt="EducazenKids" className="h-9 w-auto" onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
         ) : (
-          <div className="text-2xl font-brand-head text-brand-secondary">
-            {isSuperLunja ? 'Lunja Village' : (organizations.find(o=>o.id===userOrgId)?.name || 'Lunja Village')}
-          </div>
+          <img src="/logo-lunja.png" alt="Lunja Village" className="h-32 w-auto object-contain" onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
         );
         const hSubLabel = isSuperGlobal ? 'Client Monitoring'
                         : isEz          ? (role === 'superadmin' ? 'EducaZen Kids' : 'Espace Administrateur')
-                        : isSuperLunja  ? 'Lunja Village'
-                        : role === 'admin' ? 'Manager Portal' : 'Guest Portal';
+                        : '';
 
         return (
       <header className={`h-16 ${hBg} flex items-center justify-between px-4 md:px-6 sticky top-0 z-50`}>
@@ -1068,10 +1065,12 @@ export default function App() {
           </button>
           <div className="flex items-center gap-2">
             {hLogoText}
-            <div className={`h-4 w-[1px] mx-2 ${hSep}`} />
-            <div className={`hidden sm:block text-[10px] font-brand-body uppercase tracking-[0.2em] ${hSub}`}>
-              {hSubLabel}
-            </div>
+            {hSubLabel && <div className={`h-4 w-[1px] mx-2 ${hSep}`} />}
+            {hSubLabel && (
+              <div className={`hidden sm:block text-[10px] font-brand-body uppercase tracking-[0.2em] ${hSub}`}>
+                {hSubLabel}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1410,7 +1409,7 @@ export default function App() {
           </div>
 
           <div className="mt-auto px-2 border-t border-gray-50 pt-4">
-            <SidebarItem icon={Settings} label="Settings" active={false} onClick={() => {}} />
+            <SidebarItem icon={Settings} label="Settings" active={page === 'settings'} onClick={() => setPage('settings')} />
             <SidebarItem icon={LogOut} label="Sign Out" active={false} onClick={handleLogout} />
           </div>
         </aside>
@@ -3386,6 +3385,126 @@ export default function App() {
                       </div>
                     );
                   })()}
+
+                  {page === 'settings' && (
+                    <div className="space-y-6 max-w-2xl">
+                      <div>
+                        <h1 className="text-lg sm:text-2xl font-bold text-ink">Settings</h1>
+                        <p className="text-sm text-gray-500">Manage your account and property preferences</p>
+                      </div>
+
+                      {/* Profile */}
+                      <div className="card space-y-4">
+                        <h2 className="font-bold text-sm text-ink flex items-center gap-2">
+                          <User size={16} className="text-brand-primary" /> Profile
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Display Name</label>
+                            <input
+                              type="text"
+                              defaultValue={user?.displayName || ''}
+                              className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</label>
+                            <input
+                              type="email"
+                              defaultValue={user?.email || ''}
+                              disabled
+                              className="w-full px-4 py-2 bg-gray-100 border border-gray-100 rounded-lg text-sm text-gray-400 cursor-not-allowed"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Role</label>
+                            <input
+                              type="text"
+                              value={role === 'admin' ? 'Manager' : role === 'superadmin' ? 'Super Admin' : 'Guest'}
+                              disabled
+                              className="w-full px-4 py-2 bg-gray-100 border border-gray-100 rounded-lg text-sm text-gray-400 cursor-not-allowed"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Property */}
+                      <div className="card space-y-4">
+                        <h2 className="font-bold text-sm text-ink flex items-center gap-2">
+                          <Palmtree size={16} className="text-brand-primary" /> Property
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Property Name</label>
+                            <input
+                              type="text"
+                              defaultValue="Lunja Village"
+                              className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Location</label>
+                            <input
+                              type="text"
+                              defaultValue="Taghazout, Agadir, Morocco"
+                              className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Contact Email</label>
+                            <input
+                              type="email"
+                              defaultValue="reservations@lunjavillage.com"
+                              className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone</label>
+                            <input
+                              type="tel"
+                              defaultValue="+212 528 296 767"
+                              className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Notifications */}
+                      <div className="card space-y-4">
+                        <h2 className="font-bold text-sm text-ink flex items-center gap-2">
+                          <Bell size={16} className="text-brand-primary" /> Notifications
+                        </h2>
+                        {[
+                          { label: 'New booking alerts', desc: 'Get notified when a new reservation is created' },
+                          { label: 'Payment reminders', desc: 'Alerts for pending or overdue payments' },
+                          { label: 'Guest arrivals', desc: 'Notify on day of expected check-in' },
+                        ].map((item, i) => (
+                          <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                            <div>
+                              <div className="text-sm font-medium text-ink">{item.label}</div>
+                              <div className="text-xs text-gray-400">{item.desc}</div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" defaultChecked className="sr-only peer" />
+                              <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-brand-primary transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5" />
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Danger zone */}
+                      <div className="card border-brand-secondary/20 space-y-3">
+                        <h2 className="font-bold text-sm text-brand-secondary">Danger Zone</h2>
+                        <p className="text-xs text-gray-400">These actions are irreversible. Proceed with caution.</p>
+                        <button
+                          onClick={handleLogout}
+                          className="btn bg-brand-secondary/10 text-brand-secondary border-brand-secondary/20 hover:bg-brand-secondary hover:text-white transition-all flex items-center gap-2"
+                        >
+                          <LogOut size={14} /> Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 /* Client Portal */
