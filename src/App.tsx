@@ -100,9 +100,10 @@ interface Booking {
   orgId: string;
   ref: string;
   guestName: string;
-  type: 'Stay' | 'Dining' | 'Event';
+  type: 'Stay' | 'Restaurant' | 'Event';
   checkIn: string;
   checkOut: string;
+  formule?: string;
   amount: number;
   status: 'Active' | 'Pending' | 'Confirmed' | 'Reserved' | 'Arriving';
 }
@@ -267,6 +268,7 @@ export default function App() {
     type: 'Stay' as Booking['type'],
     checkIn: '',
     checkOut: '',
+    formule: 'Room Only',
     amount: 0,
     status: 'Pending' as Booking['status']
   });
@@ -757,6 +759,7 @@ export default function App() {
         type: newBooking.type,
         checkIn: newBooking.checkIn,
         checkOut: newBooking.checkOut,
+        formule: newBooking.formule,
         amount: Number(newBooking.amount),
         status: newBooking.status
       };
@@ -764,7 +767,7 @@ export default function App() {
       if (error) { alert('Error saving booking: ' + error.message); return; }
       await logActivity('Created', 'Booking', bookingData.ref, orgId);
       setShowNewBookingForm(false);
-      setNewBooking({ guestName: '', type: 'Stay', checkIn: '', checkOut: '', amount: 0, status: 'Pending' });
+      setNewBooking({ guestName: '', type: 'Stay', checkIn: '', checkOut: '', formule: 'Room Only', amount: 0, status: 'Pending' });
       await refetchAll(currentOrgId || userOrgId, userRole || 'admin');
     } catch (error) {
       console.error(error);
@@ -783,6 +786,7 @@ export default function App() {
         type: editingBooking.type,
         checkIn: editingBooking.checkIn,
         checkOut: editingBooking.checkOut,
+        formule: editingBooking.formule,
         amount: Number(editingBooking.amount),
         status: editingBooking.status
       }).eq('id', editingBooking.id);
@@ -1383,8 +1387,6 @@ export default function App() {
                     <SidebarItem icon={ArrowUpRight} label="Client Board" active={page === 'client-board'} onClick={() => setPage('client-board')} />
                     <SidebarItem icon={Users} label="Contacts" active={page === 'guests'} onClick={() => setPage('guests')} />
                     <SidebarItem icon={CalendarDays} label="Bookings" active={page === 'bookings'} onClick={() => setPage('bookings')} />
-                    <SidebarItem icon={CheckSquare} label="Tasks" active={page === 'tasks'} onClick={() => setPage('tasks')} />
-                    <SidebarItem icon={CalendarDays} label="Calendar" active={page === 'calendar'} onClick={() => setPage('calendar')} />
                     <SidebarItem icon={BarChart3} label="Revenue" active={page === 'revenue'} onClick={() => setPage('revenue')} />
                   </>
                 )
@@ -1709,13 +1711,12 @@ export default function App() {
                         <h1 className="text-lg sm:text-2xl font-bold text-ink">Good morning, Team</h1>
                         <p className="text-sm text-gray-500">{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · Lunja Village Resort</p>
                       </div>
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                         <StatCard title="Active Guests" value={guests.filter(g=>g.status==='In-house').length.toString()} change={`${guests.filter(g=>g.status==='Arriving').length} arriving`} trend="up" onClick={()=>setPage('guests')} />
                         <StatCard title="Total Bookings" value={bookings.length.toString()} change={`${bookings.filter(b=>b.status==='Pending').length} pending`} trend="neutral" onClick={()=>setPage('bookings')} />
-                        <StatCard title="Open Tasks" value={tasks.filter(t=>!t.done).length.toString()} change={`${tasks.filter(t=>t.urgent&&!t.done).length} urgent`} trend="up" onClick={()=>setPage('tasks')} />
                         <StatCard title="Revenue (Total)" value={`MAD ${bookings.reduce((a,b)=>a+b.amount,0).toLocaleString()}`} change={`${leads.filter(l=>l.status==='Qualified').length} leads`} trend="up" onClick={()=>setPage('revenue')} />
                       </div>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                      <div className="grid grid-cols-1 gap-4 sm:gap-6">
                         <div className="card overflow-hidden p-0">
                           <div className="p-4 border-b border-gray-50 flex items-center justify-between">
                             <button onClick={()=>setPage('guests')} className="font-bold text-sm hover:text-keppel transition-colors">Today's Arrivals</button>
@@ -1740,26 +1741,6 @@ export default function App() {
                                 ))}
                               </tbody>
                             </table>
-                          </div>
-                        </div>
-                        <div className="card">
-                          <div className="flex items-center justify-between mb-6">
-                            <button onClick={()=>setPage('tasks')} className="font-bold text-sm text-ink hover:text-keppel transition-colors">Open Staff Tasks</button>
-                            <button onClick={()=>setPage('tasks')} className="text-xs text-keppel font-bold hover:underline">View all</button>
-                          </div>
-                          <div className="space-y-4">
-                            {tasks.slice(0,4).map(task=>(
-                              <div key={task.id} className="flex items-start gap-3 group cursor-pointer hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors" onClick={()=>setPage('tasks')}>
-                                <button className={cn("mt-1 w-5 h-5 rounded border-2 flex items-center justify-center transition-all",task.done?"bg-keppel border-keppel text-white":"border-gray-200 group-hover:border-keppel")}>
-                                  {task.done&&<CheckSquare size={12}/>}
-                                </button>
-                                <div className="flex-1">
-                                  <div className={cn("text-sm font-medium",task.done&&"text-gray-400 line-through")}>{task.name}</div>
-                                  <div className="text-[10px] text-gray-500 mt-0.5">{task.department} · Due {task.due}</div>
-                                </div>
-                                {task.urgent&&<Badge status="Urgent"/>}
-                              </div>
-                            ))}
                           </div>
                         </div>
                       </div>
@@ -2055,63 +2036,67 @@ export default function App() {
                       </div>
 
                       {showNewOrgForm && (
-                        <div className="card border-eiden-gold/20 bg-eiden-gold/5 animate-in fade-in slide-in-from-top-4 duration-300">
-                          <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-ink">Register New Client</h3>
-                            <button onClick={() => setShowNewOrgForm(false)} className="text-gray-400 hover:text-ink">
-                              <X size={20} />
-                            </button>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowNewOrgForm(false); }}>
+                          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+                            <div className="p-6">
+                              <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-ink">New Client</h3>
+                                <button onClick={() => setShowNewOrgForm(false)} className="text-gray-400 hover:text-ink">
+                                  <X size={20} />
+                                </button>
+                              </div>
+                              <form onSubmit={handleSaveOrg} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Organization Name</label>
+                                  <input
+                                    required
+                                    type="text"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newOrg.name}
+                                    onChange={e => setNewOrg({...newOrg, name: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Custom Slug (optional)</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. my-client-slug"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newOrg.slug}
+                                    onChange={e => setNewOrg({...newOrg, slug: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin Email</label>
+                                  <input
+                                    required
+                                    type="email"
+                                    placeholder="admin@client.com"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newOrg.email}
+                                    onChange={e => setNewOrg({...newOrg, email: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin Password</label>
+                                  <input
+                                    required
+                                    type="password"
+                                    placeholder="Set password"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newOrg.password}
+                                    onChange={e => setNewOrg({...newOrg, password: e.target.value})}
+                                  />
+                                </div>
+                                <div className="md:col-span-2 flex justify-end gap-3 mt-2">
+                                  <button type="button" onClick={() => setShowNewOrgForm(false)} className="btn bg-white text-gray-500 border-gray-100">Cancel</button>
+                                  <button type="submit" className="btn btn-coral flex items-center gap-2">
+                                    <Plus size={16} /> Create Organization
+                                  </button>
+                                </div>
+                              </form>
+                            </div>
                           </div>
-                          <form onSubmit={handleSaveOrg} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Organization Name</label>
-                              <input 
-                                required
-                                type="text" 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
-                                value={newOrg.name}
-                                onChange={e => setNewOrg({...newOrg, name: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Custom Slug (optional)</label>
-                              <input 
-                                type="text" 
-                                placeholder="e.g. my-client-slug"
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
-                                value={newOrg.slug}
-                                onChange={e => setNewOrg({...newOrg, slug: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin Email</label>
-                              <input 
-                                required
-                                type="email" 
-                                placeholder="admin@client.com"
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
-                                value={newOrg.email}
-                                onChange={e => setNewOrg({...newOrg, email: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin Password</label>
-                              <input 
-                                required
-                                type="password" 
-                                placeholder="Set password"
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
-                                value={newOrg.password}
-                                onChange={e => setNewOrg({...newOrg, password: e.target.value})}
-                              />
-                            </div>
-                            <div className="md:col-span-2 flex justify-end gap-3 mt-2">
-                              <button type="button" onClick={() => setShowNewOrgForm(false)} className="btn bg-white text-gray-500 border-gray-100">Cancel</button>
-                              <button type="submit" className="btn btn-coral flex items-center gap-2">
-                                <Plus size={16} /> Create Organization
-                              </button>
-                            </div>
-                          </form>
                         </div>
                       )}
 
@@ -2321,84 +2306,88 @@ export default function App() {
                       </div>
 
                       {showNewGuestForm && (
-                        <div className="card border-keppel/20 bg-keppel/5 animate-in fade-in slide-in-from-top-4 duration-300">
-                          <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-ink">Add New Guest</h3>
-                            <button 
-                              onClick={() => setShowNewGuestForm(false)}
-                              className="text-gray-400 hover:text-ink"
-                            >
-                              <X size={20} />
-                            </button>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowNewGuestForm(false); }}>
+                          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <div className="p-6">
+                              <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-ink">New Contact</h3>
+                                <button
+                                  onClick={() => setShowNewGuestForm(false)}
+                                  className="text-gray-400 hover:text-ink"
+                                >
+                                  <X size={20} />
+                                </button>
+                              </div>
+                              <form onSubmit={handleSaveGuest} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Full Name</label>
+                                  <input
+                                    required
+                                    type="text"
+                                    placeholder="e.g. John Doe"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={newGuest.name}
+                                    onChange={e => setNewGuest({...newGuest, name: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</label>
+                                  <input
+                                    required
+                                    type="email"
+                                    placeholder="john@example.com"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={newGuest.email}
+                                    onChange={e => setNewGuest({...newGuest, email: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone Number</label>
+                                  <input
+                                    type="tel"
+                                    placeholder="+212 ..."
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={newGuest.phone}
+                                    onChange={e => setNewGuest({...newGuest, phone: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Company / Organization</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. Acme Corp"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={newGuest.company}
+                                    onChange={e => setNewGuest({...newGuest, company: e.target.value})}
+                                  />
+                                </div>
+                                <div className="sm:col-span-2 space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Internal Notes</label>
+                                  <textarea
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20 min-h-[60px]"
+                                    value={newGuest.notes}
+                                    onChange={e => setNewGuest({...newGuest, notes: e.target.value})}
+                                  />
+                                </div>
+                                <div className="sm:col-span-2 flex justify-end gap-3 mt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowNewGuestForm(false)}
+                                    className="btn bg-white text-gray-500 border-gray-100"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    disabled={isSavingGuest}
+                                    className="btn btn-keppel flex items-center gap-2"
+                                  >
+                                    {isSavingGuest ? 'Saving...' : <><Plus size={16} /> Save Contact</>}
+                                  </button>
+                                </div>
+                              </form>
+                            </div>
                           </div>
-                          <form onSubmit={handleSaveGuest} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Full Name</label>
-                              <input 
-                                required
-                                type="text" 
-                                placeholder="e.g. John Doe"
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={newGuest.name}
-                                onChange={e => setNewGuest({...newGuest, name: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</label>
-                              <input 
-                                required
-                                type="email" 
-                                placeholder="john@example.com"
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={newGuest.email}
-                                onChange={e => setNewGuest({...newGuest, email: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Phone Number</label>
-                              <input 
-                                type="tel" 
-                                placeholder="+212 ..."
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={newGuest.phone}
-                                onChange={e => setNewGuest({...newGuest, phone: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Company / Organization</label>
-                              <input 
-                                type="text" 
-                                placeholder="e.g. Acme Corp"
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={newGuest.company}
-                                onChange={e => setNewGuest({...newGuest, company: e.target.value})}
-                              />
-                            </div>
-                            <div className="md:col-span-3 space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Internal Notes</label>
-                              <textarea 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20 min-h-[60px]"
-                                value={newGuest.notes}
-                                onChange={e => setNewGuest({...newGuest, notes: e.target.value})}
-                              />
-                            </div>
-                            <div className="md:col-span-3 flex justify-end gap-3 mt-2">
-                              <button 
-                                type="button"
-                                onClick={() => setShowNewGuestForm(false)}
-                                className="btn bg-white text-gray-500 border-gray-100"
-                              >
-                                Cancel
-                              </button>
-                              <button 
-                                type="submit"
-                                disabled={isSavingGuest}
-                                className="btn btn-keppel flex items-center gap-2"
-                              >
-                                {isSavingGuest ? 'Saving...' : <><Plus size={16} /> Save Contact</>}
-                              </button>
-                            </div>
-                          </form>
                         </div>
                       )}
 
@@ -2556,7 +2545,7 @@ export default function App() {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                           <h1 className="text-lg sm:text-2xl font-bold text-ink">Bookings & Reservations</h1>
-                          <p className="text-sm text-gray-500">All accommodation, dining & event bookings</p>
+                          <p className="text-sm text-gray-500">All accommodation, restaurant & event bookings</p>
                         </div>
                         <button 
                           onClick={() => setShowNewBookingForm(true)}
@@ -2567,72 +2556,90 @@ export default function App() {
                       </div>
 
                       {showNewBookingForm && (
-                        <div className="card border-eiden-gold/20 bg-eiden-gold/5 animate-in fade-in slide-in-from-top-4 duration-300">
-                          <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-ink">New Reservation</h3>
-                            <button onClick={() => setShowNewBookingForm(false)} className="text-gray-400 hover:text-ink">
-                              <X size={20} />
-                            </button>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowNewBookingForm(false); }}>
+                          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <div className="p-6">
+                              <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-ink">New Reservation</h3>
+                                <button onClick={() => setShowNewBookingForm(false)} className="text-gray-400 hover:text-ink">
+                                  <X size={20} />
+                                </button>
+                              </div>
+                              <form onSubmit={handleSaveBooking} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Guest Name</label>
+                                  <input
+                                    required
+                                    type="text"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newBooking.guestName}
+                                    onChange={e => setNewBooking({...newBooking, guestName: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</label>
+                                  <select
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newBooking.type}
+                                    onChange={e => setNewBooking({...newBooking, type: e.target.value as Booking['type']})}
+                                  >
+                                    <option value="Stay">Stay</option>
+                                    <option value="Restaurant">Restaurant</option>
+                                    <option value="Event">Event</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Meal Plan</label>
+                                  <select
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newBooking.formule}
+                                    onChange={e => setNewBooking({...newBooking, formule: e.target.value})}
+                                  >
+                                    <option value="Room Only">Room Only</option>
+                                    <option value="Breakfast Included">Breakfast Included</option>
+                                    <option value="Half Board">Half Board</option>
+                                    <option value="Full Board">Full Board</option>
+                                    <option value="All Inclusive">All Inclusive</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount (MAD)</label>
+                                  <input
+                                    required
+                                    type="number"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newBooking.amount}
+                                    onChange={e => setNewBooking({...newBooking, amount: Number(e.target.value)})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Start Date</label>
+                                  <input
+                                    required
+                                    type="date"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newBooking.checkIn}
+                                    onChange={e => setNewBooking({...newBooking, checkIn: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">End Date</label>
+                                  <input
+                                    type="date"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
+                                    value={newBooking.checkOut}
+                                    onChange={e => setNewBooking({...newBooking, checkOut: e.target.value})}
+                                  />
+                                </div>
+                                <div className="sm:col-span-2 flex justify-end gap-3 mt-2">
+                                  <button type="button" onClick={() => setShowNewBookingForm(false)} className="btn bg-white text-gray-500 border-gray-100">Cancel</button>
+                                  <button type="submit" className="btn btn-coral flex items-center gap-2">
+                                    <Plus size={16} /> Save Booking
+                                  </button>
+                                </div>
+                              </form>
+                            </div>
                           </div>
-                          <form onSubmit={handleSaveBooking} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Guest Name</label>
-                              <input 
-                                required
-                                type="text" 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
-                                value={newBooking.guestName}
-                                onChange={e => setNewBooking({...newBooking, guestName: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</label>
-                              <select 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
-                                value={newBooking.type}
-                                onChange={e => setNewBooking({...newBooking, type: e.target.value as Booking['type']})}
-                              >
-                                <option value="Stay">Stay</option>
-                                <option value="Dining">Dining</option>
-                                <option value="Event">Event</option>
-                              </select>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount (MAD)</label>
-                              <input 
-                                required
-                                type="number" 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
-                                value={newBooking.amount}
-                                onChange={e => setNewBooking({...newBooking, amount: Number(e.target.value)})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Check-in</label>
-                              <input 
-                                required
-                                type="date" 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
-                                value={newBooking.checkIn}
-                                onChange={e => setNewBooking({...newBooking, checkIn: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Check-out</label>
-                              <input 
-                                type="date" 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-eiden-gold/20"
-                                value={newBooking.checkOut}
-                                onChange={e => setNewBooking({...newBooking, checkOut: e.target.value})}
-                              />
-                            </div>
-                            <div className="md:col-span-3 flex justify-end gap-3 mt-2">
-                              <button type="button" onClick={() => setShowNewBookingForm(false)} className="btn bg-white text-gray-500 border-gray-100">Cancel</button>
-                              <button type="submit" className="btn btn-coral flex items-center gap-2">
-                                <Plus size={16} /> Save Booking
-                              </button>
-                            </div>
-                          </form>
                         </div>
                       )}
 
@@ -2644,8 +2651,9 @@ export default function App() {
                                 <th className="px-3 sm:px-6 py-3 sm:py-4">Ref</th>
                                 <th className="px-3 sm:px-6 py-3 sm:py-4">Guest</th>
                                 <th className="px-3 sm:px-6 py-3 sm:py-4">Type</th>
-                                <th className="px-3 sm:px-6 py-3 sm:py-4">Check-in</th>
-                                <th className="px-3 sm:px-6 py-3 sm:py-4">Check-out</th>
+                                <th className="px-3 sm:px-6 py-3 sm:py-4">Meal Plan</th>
+                                <th className="px-3 sm:px-6 py-3 sm:py-4">Start Date</th>
+                                <th className="px-3 sm:px-6 py-3 sm:py-4">End Date</th>
                                 <th className="px-3 sm:px-6 py-3 sm:py-4">Amount</th>
                                 <th className="px-3 sm:px-6 py-3 sm:py-4">Status</th>
                               </tr>
@@ -2656,6 +2664,7 @@ export default function App() {
                                   <td className="px-3 sm:px-6 py-3 sm:py-4 font-mono text-[11px] text-gray-400">{booking.ref}</td>
                                   <td className="px-3 sm:px-6 py-3 sm:py-4 font-bold text-ink">{booking.guestName}</td>
                                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-600">{booking.type}</td>
+                                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-500 text-xs">{booking.formule || '—'}</td>
                                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-500">{booking.checkIn}</td>
                                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-500">{booking.checkOut}</td>
                                   <td className="px-3 sm:px-6 py-3 sm:py-4 font-bold text-ink">MAD {booking.amount.toLocaleString()}</td>
@@ -2686,84 +2695,102 @@ export default function App() {
                       </div>
 
                       {editingBooking && (
-                        <div className="card border-keppel/20 bg-keppel/5 animate-in fade-in slide-in-from-top-4 duration-300">
-                          <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-ink">Edit Booking: {editingBooking.ref}</h3>
-                            <button onClick={() => setEditingBooking(null)} className="text-gray-400 hover:text-ink">
-                              <X size={20} />
-                            </button>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setEditingBooking(null); }}>
+                          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <div className="p-6">
+                              <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-bold text-ink">Edit Booking: {editingBooking.ref}</h3>
+                                <button onClick={() => setEditingBooking(null)} className="text-gray-400 hover:text-ink">
+                                  <X size={20} />
+                                </button>
+                              </div>
+                              <form onSubmit={handleUpdateBooking} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Guest Name</label>
+                                  <input
+                                    required
+                                    type="text"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={editingBooking.guestName}
+                                    onChange={e => setEditingBooking({...editingBooking, guestName: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</label>
+                                  <select
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={editingBooking.type}
+                                    onChange={e => setEditingBooking({...editingBooking, type: e.target.value as Booking['type']})}
+                                  >
+                                    <option value="Stay">Stay</option>
+                                    <option value="Restaurant">Restaurant</option>
+                                    <option value="Event">Event</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Meal Plan</label>
+                                  <select
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={editingBooking.formule || 'Room Only'}
+                                    onChange={e => setEditingBooking({...editingBooking, formule: e.target.value})}
+                                  >
+                                    <option value="Room Only">Room Only</option>
+                                    <option value="Breakfast Included">Breakfast Included</option>
+                                    <option value="Half Board">Half Board</option>
+                                    <option value="Full Board">Full Board</option>
+                                    <option value="All Inclusive">All Inclusive</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount (MAD)</label>
+                                  <input
+                                    required
+                                    type="number"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={editingBooking.amount}
+                                    onChange={e => setEditingBooking({...editingBooking, amount: Number(e.target.value)})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Start Date</label>
+                                  <input
+                                    required
+                                    type="date"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={editingBooking.checkIn}
+                                    onChange={e => setEditingBooking({...editingBooking, checkIn: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">End Date</label>
+                                  <input
+                                    type="date"
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={editingBooking.checkOut}
+                                    onChange={e => setEditingBooking({...editingBooking, checkOut: e.target.value})}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</label>
+                                  <select
+                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
+                                    value={editingBooking.status}
+                                    onChange={e => setEditingBooking({...editingBooking, status: e.target.value as Booking['status']})}
+                                  >
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                  </select>
+                                </div>
+                                <div className="sm:col-span-2 flex justify-end gap-3 mt-2">
+                                  <button type="button" onClick={() => setEditingBooking(null)} className="btn bg-white text-gray-500 border-gray-100">Cancel</button>
+                                  <button type="submit" className="btn btn-keppel text-white flex items-center gap-2">
+                                    <Check size={16} /> Update Booking
+                                  </button>
+                                </div>
+                              </form>
+                            </div>
                           </div>
-                          <form onSubmit={handleUpdateBooking} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Guest Name</label>
-                              <input 
-                                required
-                                type="text" 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={editingBooking.guestName}
-                                onChange={e => setEditingBooking({...editingBooking, guestName: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</label>
-                              <select 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={editingBooking.type}
-                                onChange={e => setEditingBooking({...editingBooking, type: e.target.value as Booking['type']})}
-                              >
-                                <option value="Stay">Stay</option>
-                                <option value="Dining">Dining</option>
-                                <option value="Event">Event</option>
-                              </select>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount (MAD)</label>
-                              <input 
-                                required
-                                type="number" 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={editingBooking.amount}
-                                onChange={e => setEditingBooking({...editingBooking, amount: Number(e.target.value)})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Check-in</label>
-                              <input 
-                                required
-                                type="date" 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={editingBooking.checkIn}
-                                onChange={e => setEditingBooking({...editingBooking, checkIn: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Check-out</label>
-                              <input 
-                                type="date" 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={editingBooking.checkOut}
-                                onChange={e => setEditingBooking({...editingBooking, checkOut: e.target.value})}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</label>
-                              <select 
-                                className="w-full px-4 py-2 bg-white border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-keppel/20"
-                                value={editingBooking.status}
-                                onChange={e => setEditingBooking({...editingBooking, status: e.target.value as Booking['status']})}
-                              >
-                                <option value="Confirmed">Confirmed</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Cancelled">Cancelled</option>
-                              </select>
-                            </div>
-                            <div className="md:col-span-3 flex justify-end gap-3 mt-2">
-                              <button type="button" onClick={() => setEditingBooking(null)} className="btn bg-white text-gray-500 border-gray-100">Cancel</button>
-                              <button type="submit" className="btn btn-keppel text-white flex items-center gap-2">
-                                <Check size={16} /> Update Booking
-                              </button>
-                            </div>
-                          </form>
                         </div>
                       )}
                     </div>
@@ -3228,7 +3255,7 @@ export default function App() {
                     });
                     const typeColors: Record<string, string> = {
                       Stay: 'bg-brand-primary',
-                      Dining: 'bg-amber',
+                      Restaurant: 'bg-amber',
                       Event: 'bg-brand-secondary',
                     };
                     const typeEntries = Object.entries(byType).sort((a, b) => b[1] - a[1]);
@@ -3305,7 +3332,7 @@ export default function App() {
                                 <tr>
                                   <th className="px-4 py-3">Guest</th>
                                   <th className="px-4 py-3">Amount</th>
-                                  <th className="px-4 py-3">Check-in</th>
+                                  <th className="px-4 py-3">Start Date</th>
                                   <th className="px-4 py-3"></th>
                                 </tr>
                               </thead>
@@ -3420,11 +3447,11 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Dining */}
+                    {/* Repas & Services */}
                     <div className="card">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-sm flex items-center gap-2">
-                          <Utensils size={16} className="text-amber" /> Dining reservations
+                          <Utensils size={16} className="text-amber" /> Dining & Services
                         </h3>
                         <button className="btn btn-coral text-[10px] py-1">+ Reserve</button>
                       </div>
